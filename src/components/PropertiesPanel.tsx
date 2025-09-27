@@ -478,7 +478,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           marginBottom: "10px",
         }}
       >
-        � Guardar Cambios
+        💾 Guardar Cambios
       </button>
 
       <button
@@ -495,7 +495,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           fontWeight: "bold",
         }}
       >
-        �️ Eliminar Elemento
+        🗑️ Eliminar Elemento
       </button>
     </div>
   );
