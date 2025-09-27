@@ -93,7 +93,9 @@ function App() {
         attributes: [...templateData.attributes],
         methods: [...templateData.methods],
         elementType: templateData.elementType,
-        ...(templateData.elementType === "package" && { containedElements: [] }),
+        ...(templateData.elementType === "package" && {
+          containedElements: [],
+        }),
         x: newX,
         y: newY,
         width: 200,
@@ -223,7 +225,10 @@ function App() {
         prev.map((el) => {
           if (el.id === elementId) {
             // Actualizar el parentPackageId del elemento
-            const updatedElement = { ...el, parentPackageId: packageId || undefined };
+            const updatedElement = {
+              ...el,
+              parentPackageId: packageId || undefined,
+            };
             return updatedElement;
           } else if (el.elementType === "package") {
             // Si es un paquete, actualizar su lista de elementos contenidos
@@ -310,7 +315,9 @@ function App() {
   // Esto fuerza a React a recrear el grafo con los nuevos elementos/links
   const graphKey = `graph-${dynamicElements.length}-${
     dynamicLinks.length
-  }-${dynamicLinks
+  }-${dynamicElements
+    .map((el) => el.id + el.className + el.attributes.join(",") + (el.methods || []).join(","))
+    .join("-")}-${dynamicLinks
     .map(
       (l) => l.id + (l.sourceMultiplicity || "") + (l.targetMultiplicity || "")
     )

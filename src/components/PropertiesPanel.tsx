@@ -61,7 +61,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   const handleSave = () => {
     if (selectedElement && "className" in selectedElement) {
       const updatedElement = {
-        ...selectedElement,
+        ...selectedElement, // Preservar todas las propiedades existentes
         className,
         attributes,
         methods,
@@ -492,7 +492,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       selectedElement.elementType === "package" ? (
         <>
           <div style={{ marginBottom: "15px" }}>
-            <label style={{ fontWeight: "bold", marginBottom: "8px", display: "block" }}>
+            <label
+              style={{
+                fontWeight: "bold",
+                marginBottom: "8px",
+                display: "block",
+              }}
+            >
               📦 Elementos contenidos:
             </label>
             <div
@@ -508,7 +514,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               {selectedElement.containedElements &&
               selectedElement.containedElements.length > 0 ? (
                 selectedElement.containedElements.map((elementId) => {
-                  const containedElement = allElements.find((el) => el.id === elementId);
+                  const containedElement = allElements.find(
+                    (el) => el.id === elementId
+                  );
                   return (
                     <div
                       key={elementId}
@@ -547,7 +555,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   );
                 })
               ) : (
-                <div style={{ color: "#6c757d", fontSize: "12px", textAlign: "center" }}>
+                <div
+                  style={{
+                    color: "#6c757d",
+                    fontSize: "12px",
+                    textAlign: "center",
+                  }}
+                >
                   No hay elementos en este paquete
                 </div>
               )}
@@ -555,7 +569,13 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
 
           <div style={{ marginBottom: "15px" }}>
-            <label style={{ fontWeight: "bold", marginBottom: "8px", display: "block" }}>
+            <label
+              style={{
+                fontWeight: "bold",
+                marginBottom: "8px",
+                display: "block",
+              }}
+            >
               ➕ Agregar elemento al paquete:
             </label>
             <select
@@ -576,7 +596,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
             >
               <option value="">Seleccionar elemento...</option>
               {allElements
-                .filter((el) => el.id !== selectedElement.id && el.elementType !== "package")
+                .filter(
+                  (el) =>
+                    el.id !== selectedElement.id && el.elementType !== "package"
+                )
                 .map((el) => (
                   <option key={el.id} value={el.id}>
                     {el.className} ({el.elementType})
