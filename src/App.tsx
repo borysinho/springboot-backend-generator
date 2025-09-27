@@ -1054,65 +1054,28 @@ function UMLDiagram({
     // Escuchar el evento 'change:position' en todos los elementos
     graph.on("change:position", handleElementMove);
 
+    // También escuchar clics en links
+    const handleLinkClick = (link: { id: string }) => {
+      console.log("Link clicked directly:", link.id);
+      const relationship = dynamicLinks.find(
+        (rel: UMLRelationship) => rel.id === link.id
+      );
+      if (relationship) {
+        console.log("Selecting relationship:", relationship);
+        onSelectRelationship(relationship);
+      }
+    };
+
+    graph.on("link:pointerclick", handleLinkClick);
+    console.log("Link click listener registered on graph");
+
     // Cleanup
     return () => {
       graph.off("change:position", handleElementMove);
+      graph.off("link:pointerclick", handleLinkClick);
+      console.log("Listeners cleaned up");
     };
-  }, [graph, onUpdateElementPosition]);
-
-  // Agregar event listener para detectar clics en links usando coordenadas
-  React.useEffect(() => {
-    const handleDocumentClick = (event: MouseEvent) => {
-      // Solo procesar si no fue manejado por JointJS
-      setTimeout(() => {
-        if (!graph) return;
-
-        // Obtener las coordenadas del clic
-        const rect = document.querySelector('[data-diagram]')?.getBoundingClientRect();
-        if (!rect) return;
-
-        const x = event.clientX - rect.left;
-        const y = event.clientY - rect.top;
-
-        // Obtener todos los links
-        const links = graph.getLinks ? graph.getLinks() : [];
-
-        // Para cada link, verificar si el clic está cerca de él
-        for (const link of links) {
-          const sourceElement = graph.getCell(link.get('source').id);
-          const targetElement = graph.getCell(link.get('target').id);
-
-          if (sourceElement && targetElement) {
-            const sourcePos = sourceElement.position();
-            const targetPos = targetElement.position();
-
-            // Calcular el centro aproximado del link
-            const centerX = (sourcePos.x + targetPos.x) / 2;
-            const centerY = (sourcePos.y + targetPos.y) / 2;
-
-            // Verificar si el clic está cerca del centro del link
-            const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
-
-            if (distance < 50) {
-              const relationship = dynamicLinks.find(
-                (rel: UMLRelationship) => rel.id === link.id
-              );
-              if (relationship) {
-                onSelectRelationship(relationship);
-                break;
-              }
-            }
-          }
-        }
-      }, 10); // Pequeño delay para que JointJS procese primero
-    };
-
-    document.addEventListener('click', handleDocumentClick);
-
-    return () => {
-      document.removeEventListener('click', handleDocumentClick);
-    };
-  }, [graph, dynamicLinks, onSelectRelationship]);
+  }, [graph, onUpdateElementPosition, dynamicLinks, onSelectRelationship]);
 
   return (
     <div
