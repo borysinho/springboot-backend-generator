@@ -5,6 +5,7 @@ interface PropertiesPanelProps {
   selectedElement: CustomElement | UMLRelationship | null;
   onUpdateElement: (element: CustomElement) => void;
   onUpdateRelationship: (relationship: UMLRelationship) => void;
+  onDeleteElement: (element: CustomElement | UMLRelationship) => void;
   onClose: () => void;
 }
 
@@ -12,6 +13,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   selectedElement,
   onUpdateElement,
   onUpdateRelationship,
+  onDeleteElement,
   onClose,
 }) => {
   const [className, setClassName] = useState("");
@@ -100,6 +102,12 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
 
   const removeMethod = (index: number) => {
     setMethods(methods.filter((_, i) => i !== index));
+  };
+
+  const handleDelete = () => {
+    if (selectedElement && window.confirm("¿Estás seguro de que quieres eliminar este elemento?")) {
+      onDeleteElement(selectedElement);
+    }
   };
 
   if (!selectedElement) return null;
@@ -451,6 +459,24 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </div>
         </>
       ) : null}
+
+      <button
+        onClick={handleDelete}
+        style={{
+          width: "100%",
+          background: "#dc3545",
+          color: "white",
+          border: "none",
+          borderRadius: "4px",
+          padding: "10px",
+          fontSize: "14px",
+          cursor: "pointer",
+          fontWeight: "bold",
+          marginBottom: "10px",
+        }}
+      >
+        🗑️ Eliminar Elemento
+      </button>
 
       <button
         onClick={handleSave}
