@@ -10,11 +10,12 @@ El editor UML actual tiene implementados los elementos básicos de clases, pero 
 
 - 📄 **Clase** - Clase básica con atributos y métodos
 - 🔗 **Interfaz** - Define contratos sin implementación
--  **Enumeración** - Conjunto finito de valores
+- **Enumeración** - Conjunto finito de valores
 - 📦 **Paquete** - Contenedor organizacional
 - 📝 **Nota** - Elemento de anotación/comentario
 
 ### Elementos Eliminados ❌ (No forman parte del estándar UML):
+
 - ~~🎭 Abstracta~~ - Eliminado (es solo una clase con estereotipo)
 - ~~�️ Entidad~~ - Eliminado (estereotipo personalizado)
 - ~~🎮 Controlador~~ - Eliminado (estereotipo personalizado)
@@ -29,7 +30,7 @@ El editor UML actual tiene implementados los elementos básicos de clases, pero 
 - Atributos y métodos en clases
 - Visibilidad: pública (+), privada (-), protegida (#)
 - Métodos con parámetros
-- Clases iniciales de ejemplo
+- **Diagrama inicia completamente vacío** (sin elementos de ejemplo)
 
 ## Elementos Faltantes ❌
 
@@ -187,6 +188,7 @@ Sin las relaciones, el diagrama actual es solo una **colección de clases aislad
 Se eliminaron del proyecto todos los elementos que **NO forman parte del estándar UML 2.5.1** oficial:
 
 #### Elementos Eliminados:
+
 - **Clase Abstracta** (🎭) - No es un elemento separado, es una clase con estereotipo `<<abstract>>`
 - **Entidad** (🗃️) - Estereotipo personalizado no estándar
 - **Controlador** (🎮) - Estereotipo personalizado no estándar
@@ -197,7 +199,9 @@ Se eliminaron del proyecto todos los elementos que **NO forman parte del estánd
 - **Excepción** (⚠️) - Estereotipo personalizado no estándar
 
 #### Elementos Conservados:
+
 Solo los elementos oficiales del estándar UML 2.5.1:
+
 - **Clase** (📄)
 - **Interfaz** (🔗)
 - **Enumeración** (🔢)
@@ -205,7 +209,30 @@ Solo los elementos oficiales del estándar UML 2.5.1:
 - **Nota** (📝)
 
 #### Archivos Modificados:
+
 - `src/App.tsx`: Eliminados elementos no estándar de `toolbarItems` y `classTemplates`
+- `docs/elementos-faltantes-uml.md`: Actualizada documentación
+
+## Eliminación del Diagrama de Ejemplo 🗑️
+
+### Septiembre 27, 2025
+
+Se eliminó completamente el diagrama de ejemplo que incluía las clases **Persona**, **Estudiante**, **Profesor** y **Materia** con sus relaciones de herencia y asociación.
+
+#### Cambios Realizados:
+- **Elementos eliminados**: 4 clases de ejemplo (Persona, Estudiante, Profesor, Materia)
+- **Relaciones eliminadas**: 4 conexiones UML (herencia y asociación)
+- **Estado inicial**: Diagrama completamente vacío
+- **Tipo CustomElement**: Definido explícitamente para evitar errores de TypeScript
+
+#### Beneficios:
+- ✅ **Inicio limpio**: El editor comienza sin elementos preconstruidos
+- ✅ **Flexibilidad total**: Los usuarios pueden crear diagramas desde cero
+- ✅ **Sin distracciones**: No hay elementos de ejemplo que puedan confundir
+- ✅ **Conformidad UML**: Solo elementos oficiales del estándar
+
+#### Archivos Modificados:
+- `src/App.tsx`: Vaciados `initialElements` e `initialLinks`, definido tipo `CustomElement` explícito
 - `docs/elementos-faltantes-uml.md`: Actualizada documentación
 
 ---
@@ -213,5 +240,4 @@ Solo los elementos oficiales del estándar UML 2.5.1:
 _Documento generado el: September 27, 2025_
 _Proyecto: Editor UML con JointJS_
 _Versión UML: 2.5.1_
-_Última actualización: Eliminación de elementos no estándar_
-_Versión UML: 2.5.1_
+_Última actualización: Eliminación de diagrama de ejemplo_

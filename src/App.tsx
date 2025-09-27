@@ -9,99 +9,26 @@ import type { InferElement } from "@joint/react";
 import "./App.css";
 
 // Definir elementos UML (clases)
+// Definir el tipo CustomElement explícitamente
+type CustomElement = {
+  id: string;
+  className: string;
+  attributes: string[];
+  methods: string[];
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+};
+
 const initialElements = createElements([
-  {
-    id: "1",
-    className: "Persona",
-    attributes: ["- nombre: String", "- edad: int", "- dni: String"],
-    methods: [
-      "+ getNombre(): String",
-      "+ setNombre(nombre: String): void",
-      "+ calcularEdad(): int",
-    ],
-    x: 50,
-    y: 50,
-    width: 200,
-    height: 120,
-  },
-  {
-    id: "2",
-    className: "Estudiante",
-    attributes: ["- matricula: String", "- carrera: String", "- semestre: int"],
-    methods: [
-      "+ inscribirMateria(materia: String): void",
-      "+ obtenerPromedio(): double",
-    ],
-    x: 300,
-    y: 50,
-    width: 200,
-    height: 120,
-  },
-  {
-    id: "3",
-    className: "Profesor",
-    attributes: [
-      "- especialidad: String",
-      "- añosExperiencia: int",
-      "- titulo: String",
-    ],
-    methods: [
-      "+ dictarClase(materia: String): void",
-      "+ calificarEstudiante(estudiante: Estudiante): void",
-    ],
-    x: 550,
-    y: 50,
-    width: 200,
-    height: 120,
-  },
-  {
-    id: "4",
-    className: "Materia",
-    attributes: ["- nombre: String", "- codigo: String", "- creditos: int"],
-    methods: [
-      "+ obtenerNombre(): String",
-      "+ asignarProfesor(profesor: Profesor): void",
-    ],
-    x: 200,
-    y: 250,
-    width: 200,
-    height: 120,
-  },
+  // Diagrama vacío - sin elementos de ejemplo
 ]);
 
 // Definir conexiones UML con diferentes tipos de relaciones
 const initialLinks = createLinks([
-  {
-    id: "link1",
-    source: "1", // Persona
-    target: "2", // Estudiante
-    relationship: "inheritance",
-    label: "hereda",
-  },
-  {
-    id: "link2",
-    source: "1", // Persona
-    target: "3", // Profesor
-    relationship: "inheritance",
-    label: "hereda",
-  },
-  {
-    id: "link3",
-    source: "2", // Estudiante
-    target: "4", // Materia
-    relationship: "association",
-    label: "cursa",
-  },
-  {
-    id: "link4",
-    source: "3", // Profesor
-    target: "4", // Materia
-    relationship: "association",
-    label: "dicta",
-  },
+  // Diagrama vacío - sin conexiones de ejemplo
 ]);
-
-type CustomElement = InferElement<typeof initialElements>;
 
 // Templates para diferentes tipos de clases UML
 const classTemplates = {
