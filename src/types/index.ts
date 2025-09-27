@@ -1,10 +1,13 @@
 // types.ts - Definiciones de tipos para el editor UML
 
+export type ElementType = "class" | "interface" | "enumeration" | "package" | "note";
+
 export type CustomElement = {
   id: string;
   className: string;
   attributes: string[];
   methods: string[];
+  elementType: ElementType;
   x: number;
   y: number;
   width: number;

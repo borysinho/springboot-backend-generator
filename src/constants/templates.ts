@@ -4,26 +4,31 @@ export const classTemplates = {
     className: "NuevaClase",
     attributes: ["- atributo1: String"],
     methods: ["+ metodo1(): void"],
+    elementType: "class" as const,
   },
   interface: {
     className: "NuevaInterfaz",
     attributes: [],
     methods: ["metodoAbstracto(): void"], // Sin visibilidad, implícitamente público
+    elementType: "interface" as const,
   },
   enumeration: {
     className: "Enumeracion",
     attributes: ["VALOR1", "VALOR2", "VALOR3"], // Valores literales sin tipo ni visibilidad
     methods: [],
+    elementType: "enumeration" as const,
   },
   package: {
     className: "Paquete",
     attributes: [],
     methods: [],
+    elementType: "package" as const,
   },
   note: {
     className: "Nota",
     attributes: ["Esta es una nota importante sobre el diseño del sistema"], // Texto plano único
     methods: [],
+    elementType: "note" as const,
   },
 };
 

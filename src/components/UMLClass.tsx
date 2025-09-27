@@ -20,17 +20,20 @@ export const UMLClass: React.FC<UMLClassProps> = ({
     setIsDragging(false);
   }, []);
 
-  const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    if (mouseDownPos.current) {
-      const deltaX = Math.abs(e.clientX - mouseDownPos.current.x);
-      const deltaY = Math.abs(e.clientY - mouseDownPos.current.y);
-      
-      // Si el movimiento es menor a 5px, considerarlo como un click
-      if (deltaX < 5 && deltaY < 5 && !isDragging) {
-        onSelect?.(element);
+  const handleMouseUp = useCallback(
+    (e: React.MouseEvent) => {
+      if (mouseDownPos.current) {
+        const deltaX = Math.abs(e.clientX - mouseDownPos.current.x);
+        const deltaY = Math.abs(e.clientY - mouseDownPos.current.y);
+
+        // Si el movimiento es menor a 5px, considerarlo como un click
+        if (deltaX < 5 && deltaY < 5 && !isDragging) {
+          onSelect?.(element);
+        }
       }
-    }
-  }, [element, isDragging, onSelect]);
+    },
+    [element, isDragging, onSelect]
+  );
 
   // Detectar si se está arrastrando
   useEffect(() => {
@@ -38,7 +41,7 @@ export const UMLClass: React.FC<UMLClassProps> = ({
       if (mouseDownPos.current) {
         const deltaX = Math.abs(e.clientX - mouseDownPos.current.x);
         const deltaY = Math.abs(e.clientY - mouseDownPos.current.y);
-        
+
         if (deltaX > 5 || deltaY > 5) {
           setIsDragging(true);
         }
@@ -50,36 +53,18 @@ export const UMLClass: React.FC<UMLClassProps> = ({
       setIsDragging(false);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUpGlobal);
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUpGlobal);
 
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUpGlobal);
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUpGlobal);
     };
   }, []);
   // Determinar el tipo de elemento basado en su contenido
   const getElementType = () => {
-    if (!element.methods || element.methods.length === 0) {
-      if (!element.attributes || element.attributes.length === 0) {
-        return "package";
-      }
-      // Si tiene atributos pero no métodos, podría ser enumeración o nota
-      if (
-        element.attributes.some(
-          (attr) => !attr.includes(":") && !attr.includes("(")
-        )
-      ) {
-        return "enumeration";
-      }
-      return "note";
-    }
-    // Si tiene métodos pero no atributos, es una interfaz
-    if (!element.attributes || element.attributes.length === 0) {
-      return "interface";
-    }
-    // Si tiene ambos, es una clase
-    return "class";
+    // Usar el tipo fijo del elemento en lugar de determinar dinámicamente
+    return element.elementType;
   };
 
   const elementType = getElementType();

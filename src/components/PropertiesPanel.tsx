@@ -105,26 +105,20 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   };
 
   const getElementTypeLabel = (element: CustomElement): string => {
-    if (!element.methods || element.methods.length === 0) {
-      if (!element.attributes || element.attributes.length === 0) {
-        return "Nombre del paquete:";
-      }
-      // Si tiene atributos pero no métodos, podría ser enumeración o nota
-      if (
-        element.attributes.some(
-          (attr) => !attr.includes(":") && !attr.includes("(")
-        )
-      ) {
+    switch (element.elementType) {
+      case "class":
+        return "Nombre de la clase:";
+      case "interface":
+        return "Nombre de la interfaz:";
+      case "enumeration":
         return "Nombre de la enumeración:";
-      }
-      return "Nombre de la nota:";
+      case "package":
+        return "Nombre del paquete:";
+      case "note":
+        return "Nombre de la nota:";
+      default:
+        return "Nombre del elemento:";
     }
-    // Si tiene métodos pero no atributos, es una interfaz
-    if (!element.attributes || element.attributes.length === 0) {
-      return "Nombre de la interfaz:";
-    }
-    // Si tiene ambos, es una clase
-    return "Nombre de la clase:";
   };
 
   const handleDelete = () => {

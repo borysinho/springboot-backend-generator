@@ -92,6 +92,7 @@ function App() {
         className: templateData.className,
         attributes: [...templateData.attributes],
         methods: [...templateData.methods],
+        elementType: templateData.elementType,
         x: newX,
         y: newY,
         width: 200,
@@ -180,21 +181,24 @@ function App() {
     []
   );
 
-  const handleDeleteElement = useCallback((elementToDelete: CustomElement | UMLRelationship) => {
-    if ("className" in elementToDelete) {
-      // Es un CustomElement - eliminar de elementos dinámicos
-      setDynamicElements((prev) =>
-        prev.filter((el) => el.id !== elementToDelete.id)
-      );
-    } else {
-      // Es un UMLRelationship - eliminar de relaciones dinámicas
-      setDynamicLinks((prev) =>
-        prev.filter((rel) => rel.id !== elementToDelete.id)
-      );
-    }
-    // Deseleccionar el elemento eliminado
-    setSelectedElement(null);
-  }, []);
+  const handleDeleteElement = useCallback(
+    (elementToDelete: CustomElement | UMLRelationship) => {
+      if ("className" in elementToDelete) {
+        // Es un CustomElement - eliminar de elementos dinámicos
+        setDynamicElements((prev) =>
+          prev.filter((el) => el.id !== elementToDelete.id)
+        );
+      } else {
+        // Es un UMLRelationship - eliminar de relaciones dinámicas
+        setDynamicLinks((prev) =>
+          prev.filter((rel) => rel.id !== elementToDelete.id)
+        );
+      }
+      // Deseleccionar el elemento eliminado
+      setSelectedElement(null);
+    },
+    []
+  );
 
   const handleSelectRelationship = useCallback(
     (relationship: UMLRelationship) => {
