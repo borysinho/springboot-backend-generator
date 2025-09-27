@@ -6,7 +6,7 @@ import "./App.css";
 import type { CustomElement, UMLRelationship } from "./types";
 
 // Importar constantes
-import { classTemplates } from "./constants/templates";
+import { classTemplates, validateElementPosition } from "./constants/templates";
 
 // Importar utilidades
 import { convertRelationshipToLink } from "./utils/relationshipUtils";
@@ -46,7 +46,9 @@ function App() {
     (
       template: keyof typeof classTemplates | string,
       x?: number,
-      y?: number
+      y?: number,
+      containerWidth?: number,
+      containerHeight?: number
     ) => {
       console.log("Adding element/relationship:", template, x, y);
 
@@ -74,17 +76,49 @@ function App() {
       let newX: number, newY: number;
 
       if (x !== undefined && y !== undefined) {
-        // Posición específica del drop
-        newX = Math.max(0, x - 100); // Centrar el elemento en la posición del drop
-        newY = Math.max(0, y - 60);
+        // Posición específica del drop - validar límites
+        const centeredX = x - 100; // Centrar horizontalmente
+        const centeredY = y - 60; // Centrar verticalmente
+
+        const validatedPosition = validateElementPosition(
+          centeredX,
+          centeredY,
+          containerWidth,
+          containerHeight
+        );
+
+        newX = validatedPosition.x;
+        newY = validatedPosition.y;
       } else {
-        // Posición automática
+        // Posición automática - también validar límites
         const existingElements = [...initialElements, ...dynamicElements];
         const maxX = Math.max(...existingElements.map((el) => el.x || 0), 0);
         const maxY = Math.max(...existingElements.map((el) => el.y || 0), 0);
 
         newX = maxX + 250;
         newY = maxY > 200 ? 50 : maxY + 170;
+
+        // Validar límites para posición automática
+        const validatedPosition = validateElementPosition(
+          newX,
+          newY,
+          containerWidth,
+          containerHeight
+        );
+
+        newX = validatedPosition.x;
+        newY = validatedPosition.y;
+
+        // Si se sale por el lado derecho, empezar nueva fila
+        if (containerWidth && newX + 200 + 20 > containerWidth) {
+          newX = 20;
+          newY = newY + 120 + 20;
+        }
+
+        // Si se sale por abajo, reiniciar desde arriba
+        if (containerHeight && newY + 120 + 20 > containerHeight) {
+          newY = 20;
+        }
       }
 
       const newElement = {
@@ -316,7 +350,14 @@ function App() {
   const graphKey = `graph-${dynamicElements.length}-${
     dynamicLinks.length
   }-${dynamicElements
-    .map((el) => el.id + el.className + el.attributes.join(",") + (el.methods || []).join(","))
+    .map(
+      (el) =>
+        el.id +
+        el.className +
+        el.attributes.join(",") +
+        (el.methods || []).join(",") +
+        (el.stereotype || "")
+    )
     .join("-")}-${dynamicLinks
     .map(
       (l) => l.id + (l.sourceMultiplicity || "") + (l.targetMultiplicity || "")
@@ -326,30 +367,41 @@ function App() {
   return (
     <div
       style={{
-        padding: "20px",
+        height: "100vh",
         display: "flex",
-        gap: "20px",
-        alignItems: "flex-start",
+        gap: "10px",
+        alignItems: "stretch",
+        padding: "5px",
+        boxSizing: "border-box",
       }}
     >
       <Toolbar onDragStart={handleDragStart} />
 
-      <div style={{ flex: 1 }}>
+      <div
+        style={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+          minHeight: 0,
+        }}
+      >
         {relationshipMode && (
           <div
             style={{
               backgroundColor: "#FFF3CD",
               border: "1px solid #FFEAA7",
               borderRadius: "4px",
-              padding: "10px",
-              marginBottom: "10px",
+              padding: "8px 12px",
+              marginBottom: "5px",
               color: "#856404",
+              fontSize: "14px",
+              flexShrink: 0,
             }}
           >
-            <strong>Modo Relación Activo:</strong> Creando {relationshipMode}.
+            <strong>Modo Relación:</strong> Creando {relationshipMode}.
             {firstSelectedElement
-              ? `Primer elemento seleccionado: "${firstSelectedElement.className}". Haz clic en el segundo elemento.`
-              : "Haz clic en el primer elemento para iniciar la relación."}
+              ? ` Origen: "${firstSelectedElement.className}". Selecciona destino.`
+              : " Selecciona el primer elemento."}
             <button
               onClick={() => {
                 setRelationshipMode(null);
@@ -363,15 +415,16 @@ function App() {
                 borderRadius: "3px",
                 padding: "2px 6px",
                 cursor: "pointer",
+                fontSize: "12px",
               }}
             >
-              Cancelar
+              ✕
             </button>
           </div>
         )}
 
-        <div style={{ display: "flex", gap: "20px" }}>
-          <div style={{ flex: 1 }}>
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <div style={{ flex: 1, position: "relative" }}>
             <GraphProvider
               key={graphKey}
               initialElements={allElements}

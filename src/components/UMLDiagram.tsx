@@ -2,13 +2,18 @@ import React, { useCallback, useEffect } from "react";
 import { Paper, useGraph } from "@joint/react";
 import { UMLClass } from "./UMLClass";
 import type { CustomElement, UMLRelationship } from "../types";
-import { classTemplates } from "../constants/templates";
+import {
+  classTemplates,
+  validateElementPosition,
+} from "../constants/templates";
 
 interface UMLDiagramProps {
   onAddElement: (
     template: keyof typeof classTemplates,
     x?: number,
-    y?: number
+    y?: number,
+    containerWidth?: number,
+    containerHeight?: number
   ) => void;
   selectedElement: CustomElement | UMLRelationship | null;
   onSelectElement: (element: CustomElement) => void;
@@ -64,8 +69,19 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
 
-        console.log("Drop position:", x, y);
-        onAddElement(template, x, y);
+        // Obtener dimensiones del contenedor
+        const containerWidth = rect.width;
+        const containerHeight = rect.height;
+
+        console.log(
+          "Drop position:",
+          x,
+          y,
+          "Container size:",
+          containerWidth,
+          containerHeight
+        );
+        onAddElement(template, x, y, containerWidth, containerHeight);
       }
     },
     [onAddElement]
@@ -81,12 +97,38 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
     const handleElementMove = (element: {
       id: string;
       position: () => { x: number; y: number };
+      set: (key: string, value: { x: number; y: number }) => void;
     }) => {
       const position = element.position();
+      let { x, y } = position;
       const elementId = element.id;
 
-      // Actualizar la posición en el estado
-      onUpdateElementPosition(elementId, position.x, position.y);
+      // Validar límites para evitar que los elementos se salgan del área visible
+      // Obtener dimensiones del contenedor del diagrama
+      const diagramElement = document.querySelector(
+        "[data-diagram]"
+      ) as HTMLElement;
+      if (diagramElement) {
+        const containerWidth = diagramElement.offsetWidth;
+        const containerHeight = diagramElement.offsetHeight;
+
+        const validatedPosition = validateElementPosition(
+          x,
+          y,
+          containerWidth,
+          containerHeight
+        );
+
+        // Si la posición cambió, actualizarla en el grafo
+        if (validatedPosition.x !== x || validatedPosition.y !== y) {
+          element.set("position", validatedPosition);
+          x = validatedPosition.x;
+          y = validatedPosition.y;
+        }
+      }
+
+      // Actualizar la posición en el estado de la aplicación
+      onUpdateElementPosition(elementId, x, y);
     };
 
     // Escuchar el evento 'change:position' en todos los elementos
@@ -213,7 +255,7 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
           zIndex: 10,
         }}
       >
-        Arrastra elementos desde la barra lateral para agregarlos
+        {/* Arrastra elementos desde la barra lateral para agregarlos */}
       </div>
       <Paper
         width="100%"

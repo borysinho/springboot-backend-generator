@@ -150,10 +150,26 @@ export const UMLClass: React.FC<UMLClassProps> = ({
               : "normal",
         }}
       >
-        {elementType === "interface" && "«interface»"}
-        {elementType === "enumeration" && "«enumeration»"}
-        {elementType === "package" && "📦"}
-        {element.className}
+        {/* Estereotipo (si existe) */}
+        {element.stereotype && (
+          <div
+            style={{
+              fontSize: "10px",
+              fontStyle: "normal",
+              marginBottom: "2px",
+            }}
+          >
+            {element.stereotype}
+          </div>
+        )}
+
+        {/* Indicadores de tipo + nombre */}
+        <div>
+          {elementType === "interface" && "«interface» "}
+          {elementType === "enumeration" && "«enumeration» "}
+          {elementType === "package" && "📦 "}
+          {element.className}
+        </div>
       </div>
 
       {/* Contenido basado en el tipo */}
