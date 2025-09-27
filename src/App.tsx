@@ -3,6 +3,7 @@ import {
   GraphProvider,
   Paper,
   createElements,
+  useGraph,
 } from "@joint/react";
 import "./App.css";
 
@@ -59,13 +60,13 @@ const convertRelationshipToLink = (relationship: UMLRelationship) => {
       attrs: {
         text: {
           text: relationship.label,
-          fill: '#333',
+          fill: "#333",
           fontSize: 12,
-          fontWeight: 'bold',
+          fontWeight: "bold",
         },
         rect: {
-          fill: 'white',
-          stroke: '#333',
+          fill: "white",
+          stroke: "#333",
           strokeWidth: 1,
           rx: 3,
           ry: 3,
@@ -81,7 +82,7 @@ const convertRelationshipToLink = (relationship: UMLRelationship) => {
       attrs: {
         text: {
           text: relationship.sourceMultiplicity,
-          fill: '#666',
+          fill: "#666",
           fontSize: 11,
         },
       },
@@ -95,7 +96,7 @@ const convertRelationshipToLink = (relationship: UMLRelationship) => {
       attrs: {
         text: {
           text: relationship.targetMultiplicity,
-          fill: '#666',
+          fill: "#666",
           fontSize: 11,
         },
       },
@@ -104,40 +105,66 @@ const convertRelationshipToLink = (relationship: UMLRelationship) => {
 
   // Configurar el estilo de la línea según el tipo de relación
   switch (relationship.relationship) {
-    case 'aggregation':
+    case "aggregation":
       link.attrs = {
-        '.connection': { stroke: '#9C27B0', strokeWidth: 2 },
-        '.marker-target': { fill: '#9C27B0', stroke: '#9C27B0', d: 'M 10 0 L 0 5 L 10 10 z' },
+        ".connection": { stroke: "#9C27B0", strokeWidth: 2 },
+        ".marker-target": {
+          fill: "#9C27B0",
+          stroke: "#9C27B0",
+          d: "M 10 0 L 0 5 L 10 10 z",
+        },
       };
       break;
-    case 'composition':
+    case "composition":
       link.attrs = {
-        '.connection': { stroke: '#673AB7', strokeWidth: 2 },
-        '.marker-target': { fill: '#673AB7', stroke: '#673AB7', d: 'M 10 0 L 0 5 L 10 10 z' },
+        ".connection": { stroke: "#673AB7", strokeWidth: 2 },
+        ".marker-target": {
+          fill: "#673AB7",
+          stroke: "#673AB7",
+          d: "M 10 0 L 0 5 L 10 10 z",
+        },
       };
       break;
-    case 'generalization':
+    case "generalization":
       link.attrs = {
-        '.connection': { stroke: '#3F51B5', strokeWidth: 2 },
-        '.marker-target': { fill: 'white', stroke: '#3F51B5', strokeWidth: 2, d: 'M 10 0 L 0 5 L 10 10 z' },
+        ".connection": { stroke: "#3F51B5", strokeWidth: 2 },
+        ".marker-target": {
+          fill: "white",
+          stroke: "#3F51B5",
+          strokeWidth: 2,
+          d: "M 10 0 L 0 5 L 10 10 z",
+        },
       };
       break;
-    case 'dependency':
+    case "dependency":
       link.attrs = {
-        '.connection': { stroke: '#607D8B', strokeWidth: 1, strokeDasharray: '5,5' },
-        '.marker-target': { fill: '#607D8B', d: 'M 10 0 L 0 5 L 10 10 z' },
+        ".connection": {
+          stroke: "#607D8B",
+          strokeWidth: 1,
+          strokeDasharray: "5,5",
+        },
+        ".marker-target": { fill: "#607D8B", d: "M 10 0 L 0 5 L 10 10 z" },
       };
       break;
-    case 'realization':
+    case "realization":
       link.attrs = {
-        '.connection': { stroke: '#00BCD4', strokeWidth: 1, strokeDasharray: '5,5' },
-        '.marker-target': { fill: 'white', stroke: '#00BCD4', strokeWidth: 2, d: 'M 10 0 L 0 5 L 10 10 z' },
+        ".connection": {
+          stroke: "#00BCD4",
+          strokeWidth: 1,
+          strokeDasharray: "5,5",
+        },
+        ".marker-target": {
+          fill: "white",
+          stroke: "#00BCD4",
+          strokeWidth: 2,
+          d: "M 10 0 L 0 5 L 10 10 z",
+        },
       };
       break;
     default: // association
       link.attrs = {
-        '.connection': { stroke: '#FF5722', strokeWidth: 2 },
-        '.marker-target': { fill: '#FF5722', d: 'M 10 0 L 0 5 L 10 10 z' },
+        ".connection": { stroke: "#FF5722", strokeWidth: 2 },
+        ".marker-target": { fill: "#FF5722", d: "M 10 0 L 0 5 L 10 10 z" },
       };
   }
 
@@ -934,6 +961,7 @@ function UMLDiagram({
   onAddElement,
   selectedElement,
   onSelectElement,
+  onUpdateElementPosition,
 }: {
   onAddElement: (
     template: keyof typeof classTemplates,
@@ -942,6 +970,7 @@ function UMLDiagram({
   ) => void;
   selectedElement: CustomElement | UMLRelationship | null;
   onSelectElement: (element: CustomElement) => void;
+  onUpdateElementPosition: (elementId: string, x: number, y: number) => void;
 }) {
   const renderElement = useCallback(
     (element: CustomElement) => {
@@ -988,6 +1017,30 @@ function UMLDiagram({
     },
     [onAddElement]
   );
+
+  // Hook para acceder al grafo de JointJS
+  const graph = useGraph();
+
+  // Escuchar cambios de posición de elementos
+  React.useEffect(() => {
+    if (!graph) return;
+
+    const handleElementMove = (element: { id: string; position: () => { x: number; y: number } }) => {
+      const position = element.position();
+      const elementId = element.id;
+      
+      // Actualizar la posición en el estado
+      onUpdateElementPosition(elementId, position.x, position.y);
+    };
+
+    // Escuchar el evento 'change:position' en todos los elementos
+    graph.on('change:position', handleElementMove);
+
+    // Cleanup
+    return () => {
+      graph.off('change:position', handleElementMove);
+    };
+  }, [graph, onUpdateElementPosition]);
 
   return (
     <div
@@ -1105,6 +1158,19 @@ function App() {
     [dynamicElements, elementCounter]
   );
 
+  const handleUpdateElementPosition = useCallback(
+    (elementId: string, x: number, y: number) => {
+      // Actualizar la posición del elemento en dynamicElements
+      setDynamicElements((prev) =>
+        prev.map((el) =>
+          el.id === elementId ? { ...el, x, y } : el
+        )
+      );
+      console.log(`Element ${elementId} moved to:`, x, y);
+    },
+    []
+  );
+
   const handleSelectElement = useCallback(
     (element: CustomElement) => {
       if (relationshipMode) {
@@ -1183,12 +1249,13 @@ function App() {
 
   // Combinar elementos iniciales con dinámicos
   const allElements = [...initialElements, ...dynamicElements];
-  
+
   // Convertir relaciones dinámicas a links de JointJS con multiplicidad
   const convertedDynamicLinks = dynamicLinks.map(convertRelationshipToLink);
-  
+
   // Usar links convertidos (initialLinks estaba vacío)
-  const allLinks = convertedDynamicLinks;  console.log(
+  const allLinks = convertedDynamicLinks;
+  console.log(
     "All elements:",
     allElements.length,
     "dynamic:",
@@ -1197,7 +1264,13 @@ function App() {
 
   // Recrear el key del GraphProvider cuando cambien los elementos o relaciones dinámicas
   // Esto fuerza a React a recrear el grafo con los nuevos elementos/links
-  const graphKey = `graph-${dynamicElements.length}-${dynamicLinks.length}-${dynamicLinks.map(l => l.id + (l.sourceMultiplicity || '') + (l.targetMultiplicity || '')).join('-')}`;
+  const graphKey = `graph-${dynamicElements.length}-${
+    dynamicLinks.length
+  }-${dynamicLinks
+    .map(
+      (l) => l.id + (l.sourceMultiplicity || "") + (l.targetMultiplicity || "")
+    )
+    .join("-")}`;
 
   return (
     <div
@@ -1278,6 +1351,7 @@ function App() {
                 onAddElement={handleAddElement}
                 selectedElement={selectedElement}
                 onSelectElement={handleSelectElement}
+                onUpdateElementPosition={handleUpdateElementPosition}
               />
             </GraphProvider>
           </div>
