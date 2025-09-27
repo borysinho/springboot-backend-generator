@@ -1060,84 +1060,92 @@ function UMLDiagram({
     };
   }, [graph, onUpdateElementPosition]);
 
-  // Agregar event listener para detectar clics en links usando coordenadas
+  // Agregar event listeners directamente a los elementos DOM de los links
   React.useEffect(() => {
-    const handleDocumentClick = (event: MouseEvent) => {
-      console.log("Document click detected at:", event.clientX, event.clientY);
+    const handleLinkElementClick = (event: Event) => {
+      const target = event.target as HTMLElement;
+      console.log("Link element clicked:", target);
 
-      // Verificar inmediatamente si el clic fue dentro del diagrama
-      const diagramElement = document.querySelector("[data-diagram]");
-      if (!diagramElement) {
-        console.log("No diagram element found");
-        return;
-      }
-
-      const rect = diagramElement.getBoundingClientRect();
-      console.log("Diagram rect:", rect);
-
-      // Verificar si el clic fue dentro del diagrama
-      if (event.clientX < rect.left || event.clientX > rect.right ||
-          event.clientY < rect.top || event.clientY > rect.bottom) {
-        console.log("Click was outside diagram");
-        return;
-      }
-
-      const x = event.clientX - rect.left;
-      const y = event.clientY - rect.top;
-      console.log("Click coordinates relative to diagram:", x, y);
-
-      if (!graph) {
-        console.log("No graph available");
-        return;
-      }
-
-      // Obtener todos los links
-      const links = graph.getLinks ? graph.getLinks() : [];
-      console.log("Available links:", links.length);
-
-      // Para cada link, verificar si el clic está cerca de él
-      for (const link of links) {
-        console.log("Checking link:", link.id);
-        const sourceElement = graph.getCell(link.get("source").id);
-        const targetElement = graph.getCell(link.get("target").id);
-
-        if (sourceElement && targetElement) {
-          const sourcePos = sourceElement.position();
-          const targetPos = targetElement.position();
-          console.log("Source pos:", sourcePos, "Target pos:", targetPos);
-
-          // Calcular el centro aproximado del link
-          const centerX = (sourcePos.x + targetPos.x) / 2;
-          const centerY = (sourcePos.y + targetPos.y) / 2;
-          console.log("Link center:", centerX, centerY);
-
-          // Verificar si el clic está cerca del centro del link
-          const distance = Math.sqrt(
-            Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
+      // Buscar el elemento padre que tenga el model-id
+      const linkElement = target.closest("[model-id]") as HTMLElement;
+      if (linkElement) {
+        const linkId = linkElement.getAttribute("model-id");
+        console.log("Found link ID from DOM:", linkId);
+        if (linkId) {
+          const relationship = dynamicLinks.find(
+            (rel: UMLRelationship) => rel.id === linkId
           );
-          console.log("Distance:", distance);
-
-          if (distance < 50) {
-            console.log("Click is within range of link:", link.id);
-            const relationship = dynamicLinks.find(
-              (rel: UMLRelationship) => rel.id === link.id
-            );
-            if (relationship) {
-              console.log("Selecting relationship:", relationship);
-              onSelectRelationship(relationship);
-              break;
-            }
+          console.log("Found relationship:", relationship);
+          if (relationship) {
+            onSelectRelationship(relationship);
           }
         }
       }
     };
 
-    document.addEventListener("click", handleDocumentClick);
+    // Función para agregar listeners a los links existentes
+    const addListenersToLinks = () => {
+      // Buscar todos los elementos de link en el DOM
+      const linkElements = document.querySelectorAll("[model-id]");
+      console.log("Found link elements in DOM:", linkElements.length);
+
+      linkElements.forEach((element) => {
+        const modelId = element.getAttribute("model-id");
+        // Verificar si es un link (no un elemento)
+        const isLink = dynamicLinks.some((link) => link.id === modelId);
+        if (isLink && !element.hasAttribute("data-link-listener")) {
+          console.log("Adding click listener to link element:", modelId);
+          element.addEventListener("click", handleLinkElementClick);
+          element.setAttribute("data-link-listener", "true");
+        }
+      });
+    };
+
+    // Agregar listeners inicialmente
+    setTimeout(addListenersToLinks, 100);
+
+    // Observer para detectar cuando se agregan nuevos links al DOM
+    const observer = new MutationObserver((mutations) => {
+      let shouldAddListeners = false;
+      mutations.forEach((mutation) => {
+        if (mutation.type === "childList") {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeType === Node.ELEMENT_NODE) {
+              const element = node as Element;
+              if (
+                element.hasAttribute("model-id") ||
+                element.querySelector("[model-id]")
+              ) {
+                shouldAddListeners = true;
+              }
+            }
+          });
+        }
+      });
+      if (shouldAddListeners) {
+        setTimeout(addListenersToLinks, 50);
+      }
+    });
+
+    // Observar cambios en el DOM
+    const diagramElement = document.querySelector("[data-diagram]");
+    if (diagramElement) {
+      observer.observe(diagramElement, {
+        childList: true,
+        subtree: true,
+      });
+    }
 
     return () => {
-      document.removeEventListener("click", handleDocumentClick);
+      observer.disconnect();
+      // Remover listeners de todos los elementos
+      const linkElements = document.querySelectorAll("[data-link-listener]");
+      linkElements.forEach((element) => {
+        element.removeEventListener("click", handleLinkElementClick);
+        element.removeAttribute("data-link-listener");
+      });
     };
-  }, [graph, dynamicLinks, onSelectRelationship]);
+  }, [dynamicLinks, onSelectRelationship]);
 
   return (
     <div
