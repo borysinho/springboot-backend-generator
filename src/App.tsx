@@ -1086,11 +1086,11 @@ function UMLDiagram({
       }
     };
 
-    // Escuchar el evento 'link:pointerdown' para links
+    // Escuchar el evento 'link:pointerclick' para links
     graph.on(
-      "link:pointerdown",
+      "link:pointerclick",
       (link: { id: string }) => {
-        console.log("Link pointerdown:", link.id);
+        console.log("Link clicked:", link.id);
         handleLinkClick(link);
       }
     );
