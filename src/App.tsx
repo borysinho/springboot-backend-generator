@@ -1134,11 +1134,8 @@ function UMLDiagram({
     const x = event.clientX - rect.left;
     const y = event.clientY - rect.top;
 
-    console.log("Diagram clicked at:", x, y);
-
     // Obtener todos los links
     const links = graph.getLinks ? graph.getLinks() : [];
-    console.log("Available links:", links);
 
     // Para cada link, verificar si el clic está cerca de él
     for (const link of links) {
@@ -1154,21 +1151,17 @@ function UMLDiagram({
         const centerX = (sourcePos.x + targetPos.x) / 2;
         const centerY = (sourcePos.y + targetPos.y) / 2;
 
-        // Verificar si el clic está cerca del centro del link (dentro de un radio de 50px)
+        // Verificar si el clic está cerca del centro del link (dentro de un radio de 40px)
         const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
 
-        console.log(`Link ${link.id} center at (${centerX}, ${centerY}), click at (${x}, ${y}), distance: ${distance}`);
-
-        if (distance < 50) { // 50px de tolerancia
-          console.log("Found link at click position:", link.id);
+        if (distance < 40) { // 40px de tolerancia
           const relationship = dynamicLinks.find(
             (rel: UMLRelationship) => rel.id === link.id
           );
           if (relationship) {
-            console.log("Selecting relationship:", relationship);
             onSelectRelationship(relationship);
+            break; // Solo seleccionar el primer link encontrado
           }
-          break; // Solo seleccionar el primer link encontrado
         }
       }
     }
@@ -1187,6 +1180,7 @@ function UMLDiagram({
       data-diagram
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onClick={handleDiagramClick}
     >
       <div
         style={{
@@ -1209,6 +1203,7 @@ function UMLDiagram({
         height="100%"
         renderElement={renderElement}
         useHTMLOverlay
+        interactive
       />
     </div>
   );
