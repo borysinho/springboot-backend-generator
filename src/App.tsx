@@ -1062,28 +1062,116 @@ function UMLDiagram({
 
   // Escuchar clics en links (relaciones)
   React.useEffect(() => {
-    if (!graph) return;
+    if (!graph) {
+      console.log("Graph not available");
+      return;
+    }
+
+    console.log("Setting up link click listener, dynamicLinks:", dynamicLinks);
 
     const handleLinkClick = (link: { id: string }) => {
+      console.log("Link clicked with ID:", link.id);
       const linkId = link.id;
       // Buscar la relación correspondiente en dynamicLinks
-      const relationship = dynamicLinks.find((rel: UMLRelationship) => rel.id === linkId);
+      const relationship = dynamicLinks.find(
+        (rel: UMLRelationship) => rel.id === linkId
+      );
+      console.log("Found relationship:", relationship);
       if (relationship) {
+        console.log("Selecting relationship:", relationship);
         onSelectRelationship(relationship);
+      } else {
+        console.log("No relationship found for link ID:", linkId);
+        console.log("Available relationships:", dynamicLinks);
       }
     };
 
-    // Escuchar el evento 'element:pointerclick' en links
-    graph.on("element:pointerclick", (element: { id: string; isLink: () => boolean }) => {
-      if (element.isLink()) {
-        handleLinkClick(element);
+    // Escuchar el evento 'link:pointerdown' para links
+    graph.on(
+      "link:pointerdown",
+      (link: { id: string }) => {
+        console.log("Link pointerdown:", link.id);
+        handleLinkClick(link);
       }
-    });
+    );
+
+    // También probar con 'link:pointerup' por si acaso
+    graph.on(
+      "link:pointerup",
+      (link: { id: string }) => {
+        console.log("Link pointerup:", link.id);
+        // Solo manejar si no se manejó en pointerdown
+        const alreadyHandled = false; // Podríamos usar una flag si es necesario
+        if (!alreadyHandled) {
+          handleLinkClick(link);
+        }
+      }
+    );
 
     // Cleanup
     return () => {
-      graph.off("element:pointerclick");
+      console.log("Cleaning up link click listeners");
+      graph.off("link:pointerdown");
+      graph.off("link:pointerup");
     };
+
+    console.log("Link click listener registered");
+
+    // Cleanup
+    return () => {
+      console.log("Cleaning up link click listeners");
+      graph.off("link:pointerdown");
+      graph.off("link:pointerup");
+    };
+  }, [graph, dynamicLinks, onSelectRelationship]);
+
+  // Escuchar clics en el diagrama para detectar links
+  const handleDiagramClick = React.useCallback((event: React.MouseEvent) => {
+    if (!graph) return;
+
+    // Obtener las coordenadas del clic relativo al diagrama
+    const rect = event.currentTarget.getBoundingClientRect();
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    console.log("Diagram clicked at:", x, y);
+
+    // Obtener todos los links
+    const links = graph.getLinks ? graph.getLinks() : [];
+    console.log("Available links:", links);
+
+    // Para cada link, verificar si el clic está cerca de él
+    for (const link of links) {
+      // Obtener las posiciones de los vértices del link
+      const sourceElement = graph.getCell(link.get('source').id);
+      const targetElement = graph.getCell(link.get('target').id);
+
+      if (sourceElement && targetElement) {
+        const sourcePos = sourceElement.position();
+        const targetPos = targetElement.position();
+
+        // Calcular el centro aproximado del link
+        const centerX = (sourcePos.x + targetPos.x) / 2;
+        const centerY = (sourcePos.y + targetPos.y) / 2;
+
+        // Verificar si el clic está cerca del centro del link (dentro de un radio de 50px)
+        const distance = Math.sqrt(Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2));
+
+        console.log(`Link ${link.id} center at (${centerX}, ${centerY}), click at (${x}, ${y}), distance: ${distance}`);
+
+        if (distance < 50) { // 50px de tolerancia
+          console.log("Found link at click position:", link.id);
+          const relationship = dynamicLinks.find(
+            (rel: UMLRelationship) => rel.id === link.id
+          );
+          if (relationship) {
+            console.log("Selecting relationship:", relationship);
+            onSelectRelationship(relationship);
+          }
+          break; // Solo seleccionar el primer link encontrado
+        }
+      }
+    }
   }, [graph, dynamicLinks, onSelectRelationship]);
 
   return (
@@ -1277,9 +1365,12 @@ function App() {
     []
   );
 
-  const handleSelectRelationship = useCallback((relationship: UMLRelationship) => {
-    setSelectedElement(relationship);
-  }, []);
+  const handleSelectRelationship = useCallback(
+    (relationship: UMLRelationship) => {
+      setSelectedElement(relationship);
+    },
+    []
+  );
 
   const handleDeselectElement = useCallback(() => {
     if (relationshipMode) {
