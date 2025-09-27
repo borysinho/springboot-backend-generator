@@ -3,7 +3,6 @@ import {
   GraphProvider,
   Paper,
   createElements,
-  createLinks,
 } from "@joint/react";
 import "./App.css";
 
@@ -43,10 +42,107 @@ const initialElements = createElements([
   // Diagrama vacío - sin elementos de ejemplo
 ]);
 
-// Definir conexiones UML con diferentes tipos de relaciones
-const initialLinks = createLinks([
-  // Diagrama vacío - sin conexiones de ejemplo
-]);
+// Función para convertir UMLRelationship a link de JointJS con multiplicidad
+const convertRelationshipToLink = (relationship: UMLRelationship) => {
+  const link = {
+    id: relationship.id,
+    source: { id: relationship.source },
+    target: { id: relationship.target },
+    labels: [] as any[],
+    attrs: {} as any,
+  };
+
+  // Agregar etiqueta de relación si existe
+  if (relationship.label) {
+    link.labels.push({
+      position: 0.5,
+      attrs: {
+        text: {
+          text: relationship.label,
+          fill: '#333',
+          fontSize: 12,
+          fontWeight: 'bold',
+        },
+        rect: {
+          fill: 'white',
+          stroke: '#333',
+          strokeWidth: 1,
+          rx: 3,
+          ry: 3,
+        },
+      },
+    });
+  }
+
+  // Agregar multiplicidad en el extremo source (origen)
+  if (relationship.sourceMultiplicity) {
+    link.labels.push({
+      position: 0.1, // Cerca del extremo source
+      attrs: {
+        text: {
+          text: relationship.sourceMultiplicity,
+          fill: '#666',
+          fontSize: 11,
+        },
+      },
+    });
+  }
+
+  // Agregar multiplicidad en el extremo target (destino)
+  if (relationship.targetMultiplicity) {
+    link.labels.push({
+      position: 0.9, // Cerca del extremo target
+      attrs: {
+        text: {
+          text: relationship.targetMultiplicity,
+          fill: '#666',
+          fontSize: 11,
+        },
+      },
+    });
+  }
+
+  // Configurar el estilo de la línea según el tipo de relación
+  switch (relationship.relationship) {
+    case 'aggregation':
+      link.attrs = {
+        '.connection': { stroke: '#9C27B0', strokeWidth: 2 },
+        '.marker-target': { fill: '#9C27B0', stroke: '#9C27B0', d: 'M 10 0 L 0 5 L 10 10 z' },
+      };
+      break;
+    case 'composition':
+      link.attrs = {
+        '.connection': { stroke: '#673AB7', strokeWidth: 2 },
+        '.marker-target': { fill: '#673AB7', stroke: '#673AB7', d: 'M 10 0 L 0 5 L 10 10 z' },
+      };
+      break;
+    case 'generalization':
+      link.attrs = {
+        '.connection': { stroke: '#3F51B5', strokeWidth: 2 },
+        '.marker-target': { fill: 'white', stroke: '#3F51B5', strokeWidth: 2, d: 'M 10 0 L 0 5 L 10 10 z' },
+      };
+      break;
+    case 'dependency':
+      link.attrs = {
+        '.connection': { stroke: '#607D8B', strokeWidth: 1, strokeDasharray: '5,5' },
+        '.marker-target': { fill: '#607D8B', d: 'M 10 0 L 0 5 L 10 10 z' },
+      };
+      break;
+    case 'realization':
+      link.attrs = {
+        '.connection': { stroke: '#00BCD4', strokeWidth: 1, strokeDasharray: '5,5' },
+        '.marker-target': { fill: 'white', stroke: '#00BCD4', strokeWidth: 2, d: 'M 10 0 L 0 5 L 10 10 z' },
+      };
+      break;
+    default: // association
+      link.attrs = {
+        '.connection': { stroke: '#FF5722', strokeWidth: 2 },
+        '.marker-target': { fill: '#FF5722', d: 'M 10 0 L 0 5 L 10 10 z' },
+      };
+  }
+
+  return link;
+};
 
 // Templates para diferentes tipos de clases UML
 const classTemplates = {
@@ -939,7 +1035,6 @@ function App() {
   const [selectedElement, setSelectedElement] = useState<
     CustomElement | UMLRelationship | null
   >(null);
-  const [updateCounter, setUpdateCounter] = useState(0);
 
   // Estados para manejar relaciones UML
   const [relationshipMode, setRelationshipMode] = useState<string | null>(null);
@@ -1032,7 +1127,7 @@ function App() {
           };
 
           setDynamicLinks((prev) => [...prev, newRelationship]);
-          setUpdateCounter((prev) => prev + 1); // Forzar re-render
+          // El grafo se recrea automáticamente cuando cambian las dynamicLinks
 
           console.log("Relationship created:", newRelationship);
 
@@ -1055,8 +1150,7 @@ function App() {
     );
     // Actualizar elemento seleccionado
     setSelectedElement(updatedElement);
-    // Forzar recreación del grafo
-    setUpdateCounter((prev) => prev + 1);
+    // El grafo se recrea automáticamente cuando cambian los dynamicElements
   }, []);
 
   const handleUpdateRelationship = useCallback(
@@ -1069,8 +1163,8 @@ function App() {
       );
       // Actualizar relación seleccionada
       setSelectedElement(updatedRelationship);
-      // Forzar recreación del grafo
-      setUpdateCounter((prev) => prev + 1);
+      // No forzar recreación del grafo para relaciones - actualizar directamente
+      // setUpdateCounter((prev) => prev + 1);
     },
     []
   );
@@ -1089,20 +1183,21 @@ function App() {
 
   // Combinar elementos iniciales con dinámicos
   const allElements = [...initialElements, ...dynamicElements];
-
-  // Combinar links iniciales con dinámicos
-  const allLinks = [...initialLinks, ...dynamicLinks];
-
-  console.log(
+  
+  // Convertir relaciones dinámicas a links de JointJS con multiplicidad
+  const convertedDynamicLinks = dynamicLinks.map(convertRelationshipToLink);
+  
+  // Usar links convertidos (initialLinks estaba vacío)
+  const allLinks = convertedDynamicLinks;  console.log(
     "All elements:",
     allElements.length,
     "dynamic:",
     dynamicElements.length
   );
 
-  // Recrear el key del GraphProvider cuando cambien los elementos dinámicos
-  // Esto fuerza a React a recrear el grafo con los nuevos elementos
-  const graphKey = `graph-${dynamicElements.length}-${updateCounter}`;
+  // Recrear el key del GraphProvider cuando cambien los elementos o relaciones dinámicas
+  // Esto fuerza a React a recrear el grafo con los nuevos elementos/links
+  const graphKey = `graph-${dynamicElements.length}-${dynamicLinks.length}-${dynamicLinks.map(l => l.id + (l.sourceMultiplicity || '') + (l.targetMultiplicity || '')).join('-')}`;
 
   return (
     <div
