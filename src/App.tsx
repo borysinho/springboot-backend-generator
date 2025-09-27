@@ -265,8 +265,283 @@ function Toolbar() {
   );
 }
 
+// Componente del panel de propiedades
+function PropertiesPanel({
+  selectedElement,
+  onUpdateElement,
+  onClose,
+}: {
+  selectedElement: CustomElement | null;
+  onUpdateElement: (element: CustomElement) => void;
+  onClose: () => void;
+}) {
+  const [className, setClassName] = React.useState("");
+  const [attributes, setAttributes] = React.useState<string[]>([]);
+  const [methods, setMethods] = React.useState<string[]>([]);
+
+  // Actualizar el estado local cuando cambia el elemento seleccionado
+  React.useEffect(() => {
+    if (selectedElement) {
+      setClassName(selectedElement.className);
+      setAttributes([...selectedElement.attributes]);
+      setMethods([...(selectedElement.methods || [])]);
+    }
+  }, [selectedElement]);
+
+  const handleSave = () => {
+    if (selectedElement) {
+      const updatedElement = {
+        ...selectedElement,
+        className,
+        attributes,
+        methods,
+      };
+      onUpdateElement(updatedElement);
+    }
+  };
+
+  const addAttribute = () => {
+    setAttributes([...attributes, ""]);
+  };
+
+  const updateAttribute = (index: number, value: string) => {
+    const newAttributes = [...attributes];
+    newAttributes[index] = value;
+    setAttributes(newAttributes);
+  };
+
+  const removeAttribute = (index: number) => {
+    setAttributes(attributes.filter((_, i) => i !== index));
+  };
+
+  const addMethod = () => {
+    setMethods([...methods, ""]);
+  };
+
+  const updateMethod = (index: number, value: string) => {
+    const newMethods = [...methods];
+    newMethods[index] = value;
+    setMethods(newMethods);
+  };
+
+  const removeMethod = (index: number) => {
+    setMethods(methods.filter((_, i) => i !== index));
+  };
+
+  if (!selectedElement) return null;
+
+  return (
+    <div
+      style={{
+        width: "300px",
+        background: "#f8f9fa",
+        border: "1px solid #dee2e6",
+        borderRadius: "8px",
+        padding: "15px",
+        boxShadow: "2px 0 5px rgba(0,0,0,0.1)",
+        position: "relative",
+      }}
+    >
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "15px",
+          borderBottom: "1px solid #dee2e6",
+          paddingBottom: "10px",
+        }}
+      >
+        <h3 style={{ margin: 0, fontSize: "16px", color: "#495057" }}>
+          🏷️ Propiedades
+        </h3>
+        <button
+          onClick={onClose}
+          style={{
+            background: "none",
+            border: "none",
+            fontSize: "18px",
+            cursor: "pointer",
+            color: "#6c757d",
+            padding: "0",
+          }}
+        >
+          ×
+        </button>
+      </div>
+
+      <div style={{ marginBottom: "15px" }}>
+        <label
+          style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}
+        >
+          Nombre de la clase:
+        </label>
+        <input
+          type="text"
+          value={className}
+          onChange={(e) => setClassName(e.target.value)}
+          style={{
+            width: "100%",
+            padding: "8px",
+            border: "1px solid #ced4da",
+            borderRadius: "4px",
+            fontSize: "14px",
+          }}
+        />
+      </div>
+
+      <div style={{ marginBottom: "15px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "5px",
+          }}
+        >
+          <label style={{ fontWeight: "bold" }}>Atributos:</label>
+          <button
+            onClick={addAttribute}
+            style={{
+              background: "#28a745",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              padding: "4px 8px",
+              fontSize: "12px",
+              cursor: "pointer",
+            }}
+          >
+            + Agregar
+          </button>
+        </div>
+        {attributes.map((attr, index) => (
+          <div
+            key={index}
+            style={{ display: "flex", gap: "5px", marginBottom: "5px" }}
+          >
+            <input
+              type="text"
+              value={attr}
+              onChange={(e) => updateAttribute(index, e.target.value)}
+              placeholder="- atributo: Tipo"
+              style={{
+                flex: 1,
+                padding: "6px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "12px",
+              }}
+            />
+            <button
+              onClick={() => removeAttribute(index)}
+              style={{
+                background: "#dc3545",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                padding: "6px",
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ marginBottom: "15px" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "5px",
+          }}
+        >
+          <label style={{ fontWeight: "bold" }}>Métodos:</label>
+          <button
+            onClick={addMethod}
+            style={{
+              background: "#28a745",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              padding: "4px 8px",
+              fontSize: "12px",
+              cursor: "pointer",
+            }}
+          >
+            + Agregar
+          </button>
+        </div>
+        {methods.map((method, index) => (
+          <div
+            key={index}
+            style={{ display: "flex", gap: "5px", marginBottom: "5px" }}
+          >
+            <input
+              type="text"
+              value={method}
+              onChange={(e) => updateMethod(index, e.target.value)}
+              placeholder="+ metodo(): Tipo"
+              style={{
+                flex: 1,
+                padding: "6px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "12px",
+              }}
+            />
+            <button
+              onClick={() => removeMethod(index)}
+              style={{
+                background: "#dc3545",
+                color: "white",
+                border: "none",
+                borderRadius: "4px",
+                padding: "6px",
+                cursor: "pointer",
+                fontSize: "12px",
+              }}
+            >
+              ×
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <button
+        onClick={handleSave}
+        style={{
+          width: "100%",
+          background: "#007bff",
+          color: "white",
+          border: "none",
+          borderRadius: "4px",
+          padding: "10px",
+          fontSize: "14px",
+          cursor: "pointer",
+          fontWeight: "bold",
+        }}
+      >
+        💾 Guardar Cambios
+      </button>
+    </div>
+  );
+}
+
 // Componente para renderizar una clase UML
-function UMLClass({ element }: { element: CustomElement }) {
+function UMLClass({
+  element,
+  isSelected = false,
+  onSelect,
+}: {
+  element: CustomElement;
+  isSelected?: boolean;
+  onSelect?: (element: CustomElement) => void;
+}) {
   // Determinar el tipo de elemento basado en su contenido
   const getElementType = () => {
     if (!element.methods || element.methods.length === 0) {
@@ -338,9 +613,14 @@ function UMLClass({ element }: { element: CustomElement }) {
         fontFamily: elementType === "note" ? "Arial, sans-serif" : "monospace",
         fontSize: "12px",
         overflow: "hidden",
-        boxShadow: "2px 2px 5px rgba(0,0,0,0.1)",
+        boxShadow: isSelected
+          ? "0 0 0 3px #007bff, 2px 2px 5px rgba(0,0,0,0.1)"
+          : "2px 2px 5px rgba(0,0,0,0.1)",
         minWidth: "150px",
+        cursor: onSelect ? "pointer" : "default",
+        transition: "box-shadow 0.2s",
       }}
+      onClick={() => onSelect && onSelect(element)}
     >
       {/* Nombre del elemento */}
       <div
@@ -424,16 +704,29 @@ function UMLClass({ element }: { element: CustomElement }) {
 // Componente principal del diagrama UML
 function UMLDiagram({
   onAddElement,
+  selectedElement,
+  onSelectElement,
 }: {
   onAddElement: (
     template: keyof typeof classTemplates,
     x?: number,
     y?: number
   ) => void;
+  selectedElement: CustomElement | null;
+  onSelectElement: (element: CustomElement) => void;
 }) {
-  const renderElement = useCallback((element: CustomElement) => {
-    return <UMLClass element={element} />;
-  }, []);
+  const renderElement = useCallback(
+    (element: CustomElement) => {
+      return (
+        <UMLClass
+          element={element}
+          isSelected={selectedElement?.id === element.id}
+          onSelect={onSelectElement}
+        />
+      );
+    },
+    [selectedElement, onSelectElement]
+  );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -505,6 +798,10 @@ function UMLDiagram({
 function App() {
   const [dynamicElements, setDynamicElements] = useState<CustomElement[]>([]);
   const [elementCounter, setElementCounter] = useState(5);
+  const [selectedElement, setSelectedElement] = useState<CustomElement | null>(
+    null
+  );
+  const [updateCounter, setUpdateCounter] = useState(0);
 
   const handleAddElement = useCallback(
     (template: keyof typeof classTemplates, x?: number, y?: number) => {
@@ -546,6 +843,25 @@ function App() {
     [dynamicElements, elementCounter]
   );
 
+  const handleSelectElement = useCallback((element: CustomElement) => {
+    setSelectedElement(element);
+  }, []);
+
+  const handleUpdateElement = useCallback((updatedElement: CustomElement) => {
+    // Actualizar en elementos dinámicos
+    setDynamicElements((prev) =>
+      prev.map((el) => (el.id === updatedElement.id ? updatedElement : el))
+    );
+    // Actualizar elemento seleccionado
+    setSelectedElement(updatedElement);
+    // Forzar recreación del grafo
+    setUpdateCounter((prev) => prev + 1);
+  }, []);
+
+  const handleDeselectElement = useCallback(() => {
+    setSelectedElement(null);
+  }, []);
+
   // Combinar elementos iniciales con dinámicos
   const allElements = [...initialElements, ...dynamicElements];
 
@@ -558,7 +874,7 @@ function App() {
 
   // Recrear el key del GraphProvider cuando cambien los elementos dinámicos
   // Esto fuerza a React a recrear el grafo con los nuevos elementos
-  const graphKey = `graph-${dynamicElements.length}`;
+  const graphKey = `graph-${dynamicElements.length}-${updateCounter}`;
 
   return (
     <div
@@ -576,16 +892,32 @@ function App() {
         <p>
           Diagrama UML interactivo que muestra clases con atributos, métodos y
           relaciones. Arrastra elementos desde la barra lateral para agregarlos
-          al diagrama.
+          al diagrama. Haz clic en un elemento para editar sus propiedades.
         </p>
 
-        <GraphProvider
-          key={graphKey}
-          initialElements={allElements}
-          initialLinks={initialLinks}
-        >
-          <UMLDiagram onAddElement={handleAddElement} />
-        </GraphProvider>
+        <div style={{ display: "flex", gap: "20px" }}>
+          <div style={{ flex: 1 }}>
+            <GraphProvider
+              key={graphKey}
+              initialElements={allElements}
+              initialLinks={initialLinks}
+            >
+              <UMLDiagram
+                onAddElement={handleAddElement}
+                selectedElement={selectedElement}
+                onSelectElement={handleSelectElement}
+              />
+            </GraphProvider>
+          </div>
+
+          {selectedElement && (
+            <PropertiesPanel
+              selectedElement={selectedElement}
+              onUpdateElement={handleUpdateElement}
+              onClose={handleDeselectElement}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
