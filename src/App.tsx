@@ -973,6 +973,8 @@ function UMLDiagram({
   selectedElement,
   onSelectElement,
   onUpdateElementPosition,
+  onSelectRelationship,
+  dynamicLinks,
 }: {
   onAddElement: (
     template: keyof typeof classTemplates,
@@ -982,6 +984,8 @@ function UMLDiagram({
   selectedElement: CustomElement | UMLRelationship | null;
   onSelectElement: (element: CustomElement) => void;
   onUpdateElementPosition: (elementId: string, x: number, y: number) => void;
+  onSelectRelationship: (relationship: UMLRelationship) => void;
+  dynamicLinks: UMLRelationship[];
 }) {
   const renderElement = useCallback(
     (element: CustomElement) => {
@@ -1055,6 +1059,32 @@ function UMLDiagram({
       graph.off("change:position", handleElementMove);
     };
   }, [graph, onUpdateElementPosition]);
+
+  // Escuchar clics en links (relaciones)
+  React.useEffect(() => {
+    if (!graph) return;
+
+    const handleLinkClick = (link: { id: string }) => {
+      const linkId = link.id;
+      // Buscar la relación correspondiente en dynamicLinks
+      const relationship = dynamicLinks.find((rel: UMLRelationship) => rel.id === linkId);
+      if (relationship) {
+        onSelectRelationship(relationship);
+      }
+    };
+
+    // Escuchar el evento 'element:pointerclick' en links
+    graph.on("element:pointerclick", (element: { id: string; isLink: () => boolean }) => {
+      if (element.isLink()) {
+        handleLinkClick(element);
+      }
+    });
+
+    // Cleanup
+    return () => {
+      graph.off("element:pointerclick");
+    };
+  }, [graph, dynamicLinks, onSelectRelationship]);
 
   return (
     <div
@@ -1247,6 +1277,10 @@ function App() {
     []
   );
 
+  const handleSelectRelationship = useCallback((relationship: UMLRelationship) => {
+    setSelectedElement(relationship);
+  }, []);
+
   const handleDeselectElement = useCallback(() => {
     if (relationshipMode) {
       // Cancelar modo de relación
@@ -1296,27 +1330,6 @@ function App() {
       <Toolbar />
 
       <div style={{ flex: 1 }}>
-        {dynamicLinks.length > 0 && (
-          <button
-            onClick={() => {
-              const lastRelationship = dynamicLinks[dynamicLinks.length - 1];
-              setSelectedElement(lastRelationship);
-            }}
-            style={{
-              background: "#17a2b8",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              padding: "8px 16px",
-              cursor: "pointer",
-              fontSize: "14px",
-              marginBottom: "10px",
-            }}
-          >
-            🔗 Seleccionar Última Relación
-          </button>
-        )}
-
         {relationshipMode && (
           <div
             style={{
@@ -1364,6 +1377,8 @@ function App() {
                 selectedElement={selectedElement}
                 onSelectElement={handleSelectElement}
                 onUpdateElementPosition={handleUpdateElementPosition}
+                onSelectRelationship={handleSelectRelationship}
+                dynamicLinks={dynamicLinks}
               />
             </GraphProvider>
           </div>
