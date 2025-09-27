@@ -6,6 +6,8 @@ interface PropertiesPanelProps {
   onUpdateElement: (element: CustomElement) => void;
   onUpdateRelationship: (relationship: UMLRelationship) => void;
   onDeleteElement: (element: CustomElement | UMLRelationship) => void;
+  onAssignToPackage: (elementId: string, packageId: string | null) => void;
+  allElements: CustomElement[];
   onClose: () => void;
 }
 
@@ -14,6 +16,8 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   onUpdateElement,
   onUpdateRelationship,
   onDeleteElement,
+  onAssignToPackage,
+  allElements,
   onClose,
 }) => {
   const [className, setClassName] = useState("");
@@ -478,6 +482,107 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 </button>
               </div>
             ))}
+          </div>
+        </>
+      ) : null}
+
+      {/* Sección de elementos contenidos (solo para paquetes) */}
+      {selectedElement &&
+      "className" in selectedElement &&
+      selectedElement.elementType === "package" ? (
+        <>
+          <div style={{ marginBottom: "15px" }}>
+            <label style={{ fontWeight: "bold", marginBottom: "8px", display: "block" }}>
+              📦 Elementos contenidos:
+            </label>
+            <div
+              style={{
+                maxHeight: "150px",
+                overflowY: "auto",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                padding: "8px",
+                backgroundColor: "#f8f9fa",
+              }}
+            >
+              {selectedElement.containedElements &&
+              selectedElement.containedElements.length > 0 ? (
+                selectedElement.containedElements.map((elementId) => {
+                  const containedElement = allElements.find((el) => el.id === elementId);
+                  return (
+                    <div
+                      key={elementId}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "4px 8px",
+                        margin: "2px 0",
+                        backgroundColor: "white",
+                        borderRadius: "3px",
+                        border: "1px solid #dee2e6",
+                      }}
+                    >
+                      <span style={{ fontSize: "12px" }}>
+                        {containedElement
+                          ? `${containedElement.className} (${containedElement.elementType})`
+                          : `Elemento ${elementId} (no encontrado)`}
+                      </span>
+                      <button
+                        onClick={() => onAssignToPackage(elementId, null)}
+                        style={{
+                          background: "#6c757d",
+                          color: "white",
+                          border: "none",
+                          borderRadius: "3px",
+                          padding: "2px 6px",
+                          cursor: "pointer",
+                          fontSize: "10px",
+                        }}
+                        title="Remover del paquete"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  );
+                })
+              ) : (
+                <div style={{ color: "#6c757d", fontSize: "12px", textAlign: "center" }}>
+                  No hay elementos en este paquete
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <label style={{ fontWeight: "bold", marginBottom: "8px", display: "block" }}>
+              ➕ Agregar elemento al paquete:
+            </label>
+            <select
+              onChange={(e) => {
+                if (e.target.value) {
+                  onAssignToPackage(e.target.value, selectedElement.id);
+                  e.target.value = ""; // Reset select
+                }
+              }}
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "14px",
+                backgroundColor: "white",
+              }}
+            >
+              <option value="">Seleccionar elemento...</option>
+              {allElements
+                .filter((el) => el.id !== selectedElement.id && el.elementType !== "package")
+                .map((el) => (
+                  <option key={el.id} value={el.id}>
+                    {el.className} ({el.elementType})
+                  </option>
+                ))}
+            </select>
           </div>
         </>
       ) : null}

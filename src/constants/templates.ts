@@ -23,6 +23,7 @@ export const classTemplates = {
     attributes: [],
     methods: [],
     elementType: "package" as const,
+    containedElements: [], // Paquetes pueden contener otros elementos
   },
   note: {
     className: "Nota",

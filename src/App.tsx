@@ -93,6 +93,7 @@ function App() {
         attributes: [...templateData.attributes],
         methods: [...templateData.methods],
         elementType: templateData.elementType,
+        ...(templateData.elementType === "package" && { containedElements: [] }),
         x: newX,
         y: newY,
         width: 200,
@@ -188,6 +189,22 @@ function App() {
         setDynamicElements((prev) =>
           prev.filter((el) => el.id !== elementToDelete.id)
         );
+
+        // Si el elemento tenía un paquete padre, removerlo de la lista de contenidos
+        if (elementToDelete.parentPackageId) {
+          setDynamicElements((prev) =>
+            prev.map((el) =>
+              el.id === elementToDelete.parentPackageId && el.containedElements
+                ? {
+                    ...el,
+                    containedElements: el.containedElements.filter(
+                      (id) => id !== elementToDelete.id
+                    ),
+                  }
+                : el
+            )
+          );
+        }
       } else {
         // Es un UMLRelationship - eliminar de relaciones dinámicas
         setDynamicLinks((prev) =>
@@ -196,6 +213,42 @@ function App() {
       }
       // Deseleccionar el elemento eliminado
       setSelectedElement(null);
+    },
+    []
+  );
+
+  const handleAssignToPackage = useCallback(
+    (elementId: string, packageId: string | null) => {
+      setDynamicElements((prev) =>
+        prev.map((el) => {
+          if (el.id === elementId) {
+            // Actualizar el parentPackageId del elemento
+            const updatedElement = { ...el, parentPackageId: packageId || undefined };
+            return updatedElement;
+          } else if (el.elementType === "package") {
+            // Si es un paquete, actualizar su lista de elementos contenidos
+            if (packageId === el.id) {
+              // Agregar el elemento a este paquete
+              const containedElements = el.containedElements || [];
+              if (!containedElements.includes(elementId)) {
+                return {
+                  ...el,
+                  containedElements: [...containedElements, elementId],
+                };
+              }
+            } else if (el.containedElements?.includes(elementId)) {
+              // Remover el elemento de este paquete si estaba asignado a otro
+              return {
+                ...el,
+                containedElements: el.containedElements.filter(
+                  (id) => id !== elementId
+                ),
+              };
+            }
+          }
+          return el;
+        })
+      );
     },
     []
   );
@@ -334,6 +387,8 @@ function App() {
               onUpdateElement={handleUpdateElement}
               onUpdateRelationship={handleUpdateRelationship}
               onDeleteElement={handleDeleteElement}
+              onAssignToPackage={handleAssignToPackage}
+              allElements={[...initialElements, ...dynamicElements]}
               onClose={handleDeselectElement}
             />
           )}

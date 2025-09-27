@@ -1,6 +1,11 @@
 // types.ts - Definiciones de tipos para el editor UML
 
-export type ElementType = "class" | "interface" | "enumeration" | "package" | "note";
+export type ElementType =
+  | "class"
+  | "interface"
+  | "enumeration"
+  | "package"
+  | "note";
 
 export type CustomElement = {
   id: string;
@@ -8,6 +13,8 @@ export type CustomElement = {
   attributes: string[];
   methods: string[];
   elementType: ElementType;
+  parentPackageId?: string; // ID del paquete que contiene este elemento (opcional)
+  containedElements?: string[]; // IDs de elementos contenidos (solo para paquetes)
   x: number;
   y: number;
   width: number;
