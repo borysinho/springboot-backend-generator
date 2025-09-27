@@ -1054,28 +1054,90 @@ function UMLDiagram({
     // Escuchar el evento 'change:position' en todos los elementos
     graph.on("change:position", handleElementMove);
 
-    // También escuchar clics en links
-    const handleLinkClick = (link: { id: string }) => {
-      console.log("Link clicked directly:", link.id);
-      const relationship = dynamicLinks.find(
-        (rel: UMLRelationship) => rel.id === link.id
-      );
-      if (relationship) {
-        console.log("Selecting relationship:", relationship);
-        onSelectRelationship(relationship);
-      }
-    };
-
-    graph.on("link:pointerclick", handleLinkClick);
-    console.log("Link click listener registered on graph");
-
     // Cleanup
     return () => {
       graph.off("change:position", handleElementMove);
-      graph.off("link:pointerclick", handleLinkClick);
-      console.log("Listeners cleaned up");
     };
-  }, [graph, onUpdateElementPosition, dynamicLinks, onSelectRelationship]);
+  }, [graph, onUpdateElementPosition]);
+
+  // Agregar event listener para detectar clics en links usando coordenadas
+  React.useEffect(() => {
+    const handleDocumentClick = (event: MouseEvent) => {
+      console.log("Document click detected at:", event.clientX, event.clientY);
+
+      // Verificar inmediatamente si el clic fue dentro del diagrama
+      const diagramElement = document.querySelector("[data-diagram]");
+      if (!diagramElement) {
+        console.log("No diagram element found");
+        return;
+      }
+
+      const rect = diagramElement.getBoundingClientRect();
+      console.log("Diagram rect:", rect);
+
+      // Verificar si el clic fue dentro del diagrama
+      if (event.clientX < rect.left || event.clientX > rect.right ||
+          event.clientY < rect.top || event.clientY > rect.bottom) {
+        console.log("Click was outside diagram");
+        return;
+      }
+
+      const x = event.clientX - rect.left;
+      const y = event.clientY - rect.top;
+      console.log("Click coordinates relative to diagram:", x, y);
+
+      if (!graph) {
+        console.log("No graph available");
+        return;
+      }
+
+      // Obtener todos los links
+      const links = graph.getLinks ? graph.getLinks() : [];
+      console.log("Available links:", links.length);
+
+      // Para cada link, verificar si el clic está cerca de él
+      for (const link of links) {
+        console.log("Checking link:", link.id);
+        const sourceElement = graph.getCell(link.get("source").id);
+        const targetElement = graph.getCell(link.get("target").id);
+
+        if (sourceElement && targetElement) {
+          const sourcePos = sourceElement.position();
+          const targetPos = targetElement.position();
+          console.log("Source pos:", sourcePos, "Target pos:", targetPos);
+
+          // Calcular el centro aproximado del link
+          const centerX = (sourcePos.x + targetPos.x) / 2;
+          const centerY = (sourcePos.y + targetPos.y) / 2;
+          console.log("Link center:", centerX, centerY);
+
+          // Verificar si el clic está cerca del centro del link
+          const distance = Math.sqrt(
+            Math.pow(x - centerX, 2) + Math.pow(y - centerY, 2)
+          );
+          console.log("Distance:", distance);
+
+          if (distance < 50) {
+            console.log("Click is within range of link:", link.id);
+            const relationship = dynamicLinks.find(
+              (rel: UMLRelationship) => rel.id === link.id
+            );
+            if (relationship) {
+              console.log("Selecting relationship:", relationship);
+              onSelectRelationship(relationship);
+              break;
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener("click", handleDocumentClick);
+
+    return () => {
+      document.removeEventListener("click", handleDocumentClick);
+    };
+  }, [graph, dynamicLinks, onSelectRelationship]);
 
   return (
     <div
