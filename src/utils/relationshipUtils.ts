@@ -1,4 +1,4 @@
-import type { UMLRelationship } from "../types";
+import type { UMLRelationship, CustomElement } from "../types";
 
 // Función para convertir UMLRelationship a link de JointJS con multiplicidad
 export const convertRelationshipToLink = (relationship: UMLRelationship) => {
@@ -198,4 +198,28 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   }
 
   return link;
+};
+
+// Función para determinar el tipo de elemento UML basado en su contenido
+export const getElementType = (element: CustomElement): string => {
+  if (!element.methods || element.methods.length === 0) {
+    if (!element.attributes || element.attributes.length === 0) {
+      return "Paquete";
+    }
+    // Si tiene atributos pero no métodos, podría ser enumeración o nota
+    if (
+      element.attributes.some(
+        (attr) => !attr.includes(":") && !attr.includes("(")
+      )
+    ) {
+      return "Enumeración";
+    }
+    return "Nota";
+  }
+  // Si tiene métodos pero no atributos, es una interfaz
+  if (!element.attributes || element.attributes.length === 0) {
+    return "Interfaz";
+  }
+  // Si tiene ambos, es una clase
+  return "Clase";
 };

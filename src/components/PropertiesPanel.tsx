@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import type { CustomElement, UMLRelationship } from "../types";
+import { getElementType } from "../utils/relationshipUtils";
 
 interface PropertiesPanelProps {
   selectedElement: CustomElement | UMLRelationship | null;
@@ -140,7 +141,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         <h3 style={{ margin: 0, fontSize: "16px", color: "#495057" }}>
           🏷️{" "}
           {selectedElement && "className" in selectedElement
-            ? "Propiedades"
+            ? `Propiedades - ${getElementType(selectedElement)}`
             : "Propiedades de Relación"}
         </h3>
         <button
