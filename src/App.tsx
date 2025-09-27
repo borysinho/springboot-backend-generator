@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import React, { useCallback, useState } from "react";
 import {
   GraphProvider,
   Paper,
@@ -493,8 +493,6 @@ function UMLDiagram({
         Arrastra elementos desde la barra lateral para agregarlos
       </div>
       <Paper
-        initialElements={initialElements}
-        initialLinks={initialLinks}
         width="100%"
         height="100%"
         renderElement={renderElement}
@@ -558,6 +556,10 @@ function App() {
     dynamicElements.length
   );
 
+  // Recrear el key del GraphProvider cuando cambien los elementos dinámicos
+  // Esto fuerza a React a recrear el grafo con los nuevos elementos
+  const graphKey = `graph-${dynamicElements.length}`;
+
   return (
     <div
       style={{
@@ -578,6 +580,7 @@ function App() {
         </p>
 
         <GraphProvider
+          key={graphKey}
           initialElements={allElements}
           initialLinks={initialLinks}
         >
