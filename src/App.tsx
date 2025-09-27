@@ -58,11 +58,11 @@ const classTemplates = {
   interface: {
     className: "NuevaInterfaz",
     attributes: [],
-    methods: ["+ metodoAbstracto(): void"],
+    methods: ["metodoAbstracto(): void"], // Sin visibilidad, implícitamente público
   },
   enumeration: {
     className: "Enumeracion",
-    attributes: ["VALOR1", "VALOR2", "VALOR3"],
+    attributes: ["VALOR1", "VALOR2", "VALOR3"], // Valores literales sin tipo ni visibilidad
     methods: [],
   },
   package: {
@@ -72,7 +72,7 @@ const classTemplates = {
   },
   note: {
     className: "Nota",
-    attributes: ["Esta es una nota importante", "sobre el diseño del sistema"],
+    attributes: ["Esta es una nota importante sobre el diseño del sistema"], // Texto plano único
     methods: [],
   },
 };
@@ -366,19 +366,25 @@ function PropertiesPanel({
             >
               Multiplicidad origen:
             </label>
-            <input
-              type="text"
+            <select
               value={sourceMultiplicity}
               onChange={(e) => setSourceMultiplicity(e.target.value)}
-              placeholder="ej: 1, *, 0..1"
               style={{
                 width: "100%",
                 padding: "8px",
                 border: "1px solid #ced4da",
                 borderRadius: "4px",
                 fontSize: "14px",
+                backgroundColor: "white",
               }}
-            />
+            >
+              <option value="">Sin multiplicidad</option>
+              <option value="1">1 (uno)</option>
+              <option value="*">* (cero o más)</option>
+              <option value="0..1">0..1 (opcional)</option>
+              <option value="1..*">1..* (uno o más)</option>
+              <option value="0..*">0..* (cero o más)</option>
+            </select>
           </div>
 
           <div style={{ marginBottom: "15px" }}>
@@ -391,19 +397,25 @@ function PropertiesPanel({
             >
               Multiplicidad destino:
             </label>
-            <input
-              type="text"
+            <select
               value={targetMultiplicity}
               onChange={(e) => setTargetMultiplicity(e.target.value)}
-              placeholder="ej: 1, *, 0..1"
               style={{
                 width: "100%",
                 padding: "8px",
                 border: "1px solid #ced4da",
                 borderRadius: "4px",
                 fontSize: "14px",
+                backgroundColor: "white",
               }}
-            />
+            >
+              <option value="">Sin multiplicidad</option>
+              <option value="1">1 (uno)</option>
+              <option value="*">* (cero o más)</option>
+              <option value="0..1">0..1 (opcional)</option>
+              <option value="1..*">1..* (uno o más)</option>
+              <option value="0..*">0..* (cero o más)</option>
+            </select>
           </div>
 
           <div style={{ marginBottom: "15px" }}>
@@ -652,6 +664,11 @@ function UMLClass({
       }
       return "note";
     }
+    // Si tiene métodos pero no atributos, es una interfaz
+    if (!element.attributes || element.attributes.length === 0) {
+      return "interface";
+    }
+    // Si tiene ambos, es una clase
     return "class";
   };
 
@@ -659,6 +676,11 @@ function UMLClass({
 
   const getElementStyle = () => {
     switch (elementType) {
+      case "interface":
+        return {
+          border: "2px solid #2196F3",
+          background: "#e3f2fd",
+        };
       case "enumeration":
         return {
           border: "2px solid #795548",
@@ -685,6 +707,8 @@ function UMLClass({
 
   const getHeaderStyle = () => {
     switch (elementType) {
+      case "interface":
+        return { background: "#bbdefb" };
       case "enumeration":
         return { background: "#d7ccc8" };
       case "package":
@@ -724,15 +748,29 @@ function UMLClass({
           fontWeight: "bold",
           textAlign: "center",
           borderBottom: "1px solid #333",
-          fontStyle: elementType === "enumeration" ? "italic" : "normal",
+          fontStyle:
+            elementType === "interface" || elementType === "enumeration"
+              ? "italic"
+              : "normal",
         }}
       >
+        {elementType === "interface" && "«interface»"}
         {elementType === "enumeration" && "«enumeration»"}
         {elementType === "package" && "📦"}
         {element.className}
       </div>
 
       {/* Contenido basado en el tipo */}
+      {elementType === "interface" && (
+        <div style={{ padding: "4px 8px" }}>
+          {element.methods?.map((method, index) => (
+            <div key={index} style={{ margin: "2px 0" }}>
+              {method}
+            </div>
+          ))}
+        </div>
+      )}
+
       {elementType === "enumeration" && (
         <div style={{ padding: "8px" }}>
           {element.attributes?.map((value, index) => (
