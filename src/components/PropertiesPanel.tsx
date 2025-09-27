@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from "react";
 import type { CustomElement, UMLRelationship } from "../types";
-import { getElementType } from "../utils/relationshipUtils";
 
 interface PropertiesPanelProps {
   selectedElement: CustomElement | UMLRelationship | null;
@@ -105,6 +104,29 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     setMethods(methods.filter((_, i) => i !== index));
   };
 
+  const getElementTypeLabel = (element: CustomElement): string => {
+    if (!element.methods || element.methods.length === 0) {
+      if (!element.attributes || element.attributes.length === 0) {
+        return "Nombre del paquete:";
+      }
+      // Si tiene atributos pero no métodos, podría ser enumeración o nota
+      if (
+        element.attributes.some(
+          (attr) => !attr.includes(":") && !attr.includes("(")
+        )
+      ) {
+        return "Nombre de la enumeración:";
+      }
+      return "Nombre de la nota:";
+    }
+    // Si tiene métodos pero no atributos, es una interfaz
+    if (!element.attributes || element.attributes.length === 0) {
+      return "Nombre de la interfaz:";
+    }
+    // Si tiene ambos, es una clase
+    return "Nombre de la clase:";
+  };
+
   const handleDelete = () => {
     if (
       selectedElement &&
@@ -141,7 +163,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         <h3 style={{ margin: 0, fontSize: "16px", color: "#495057" }}>
           🏷️{" "}
           {selectedElement && "className" in selectedElement
-            ? `Propiedades - ${getElementType(selectedElement)}`
+            ? "Propiedades"
             : "Propiedades de Relación"}
         </h3>
         <button
@@ -324,7 +346,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 fontWeight: "bold",
               }}
             >
-              Nombre de la clase:
+              {selectedElement && "className" in selectedElement
+                ? getElementTypeLabel(selectedElement)
+                : "Etiqueta de la relación:"}
             </label>
             <input
               type="text"
