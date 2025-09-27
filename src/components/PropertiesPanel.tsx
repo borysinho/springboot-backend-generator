@@ -105,7 +105,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   };
 
   const handleDelete = () => {
-    if (selectedElement && window.confirm("¿Estás seguro de que quieres eliminar este elemento?")) {
+    if (
+      selectedElement &&
+      window.confirm("¿Estás seguro de que quieres eliminar este elemento?")
+    ) {
       onDeleteElement(selectedElement);
     }
   };
@@ -461,24 +464,6 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       ) : null}
 
       <button
-        onClick={handleDelete}
-        style={{
-          width: "100%",
-          background: "#dc3545",
-          color: "white",
-          border: "none",
-          borderRadius: "4px",
-          padding: "10px",
-          fontSize: "14px",
-          cursor: "pointer",
-          fontWeight: "bold",
-          marginBottom: "10px",
-        }}
-      >
-        🗑️ Eliminar Elemento
-      </button>
-
-      <button
         onClick={handleSave}
         style={{
           width: "100%",
@@ -490,9 +475,27 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           fontSize: "14px",
           cursor: "pointer",
           fontWeight: "bold",
+          marginBottom: "10px",
         }}
       >
-        💾 Guardar Cambios
+        � Guardar Cambios
+      </button>
+
+      <button
+        onClick={handleDelete}
+        style={{
+          width: "100%",
+          background: "#dc3545",
+          color: "white",
+          border: "none",
+          borderRadius: "4px",
+          padding: "10px",
+          fontSize: "14px",
+          cursor: "pointer",
+          fontWeight: "bold",
+        }}
+      >
+        �️ Eliminar Elemento
       </button>
     </div>
   );
