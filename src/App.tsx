@@ -5,7 +5,6 @@ import {
   createElements,
   createLinks,
 } from "@joint/react";
-import type { InferElement } from "@joint/react";
 import "./App.css";
 
 // Definir elementos UML (clases)
@@ -26,7 +25,13 @@ type UMLRelationship = {
   id: string;
   source: string;
   target: string;
-  relationship: 'association' | 'aggregation' | 'composition' | 'generalization' | 'dependency' | 'realization';
+  relationship:
+    | "association"
+    | "aggregation"
+    | "composition"
+    | "generalization"
+    | "dependency"
+    | "realization";
   label?: string;
   sourceMultiplicity?: string;
   targetMultiplicity?: string;
@@ -167,27 +172,54 @@ function Toolbar() {
 function PropertiesPanel({
   selectedElement,
   onUpdateElement,
+  onUpdateRelationship,
   onClose,
 }: {
-  selectedElement: CustomElement | null;
+  selectedElement: CustomElement | UMLRelationship | null;
   onUpdateElement: (element: CustomElement) => void;
+  onUpdateRelationship: (relationship: UMLRelationship) => void;
   onClose: () => void;
 }) {
   const [className, setClassName] = React.useState("");
   const [attributes, setAttributes] = React.useState<string[]>([]);
   const [methods, setMethods] = React.useState<string[]>([]);
+  const [relationshipLabel, setRelationshipLabel] = React.useState("");
+  const [sourceMultiplicity, setSourceMultiplicity] = React.useState("");
+  const [targetMultiplicity, setTargetMultiplicity] = React.useState("");
+  const [sourceRole, setSourceRole] = React.useState("");
+  const [targetRole, setTargetRole] = React.useState("");
 
   // Actualizar el estado local cuando cambia el elemento seleccionado
   React.useEffect(() => {
     if (selectedElement) {
-      setClassName(selectedElement.className);
-      setAttributes([...selectedElement.attributes]);
-      setMethods([...(selectedElement.methods || [])]);
+      if ("className" in selectedElement) {
+        // Es un CustomElement
+        setClassName(selectedElement.className);
+        setAttributes([...selectedElement.attributes]);
+        setMethods([...(selectedElement.methods || [])]);
+        // Limpiar campos de relación
+        setRelationshipLabel("");
+        setSourceMultiplicity("");
+        setTargetMultiplicity("");
+        setSourceRole("");
+        setTargetRole("");
+      } else {
+        // Es un UMLRelationship
+        setRelationshipLabel(selectedElement.label || "");
+        setSourceMultiplicity(selectedElement.sourceMultiplicity || "");
+        setTargetMultiplicity(selectedElement.targetMultiplicity || "");
+        setSourceRole(selectedElement.sourceRole || "");
+        setTargetRole(selectedElement.targetRole || "");
+        // Limpiar campos de elemento
+        setClassName("");
+        setAttributes([]);
+        setMethods([]);
+      }
     }
   }, [selectedElement]);
 
   const handleSave = () => {
-    if (selectedElement) {
+    if (selectedElement && "className" in selectedElement) {
       const updatedElement = {
         ...selectedElement,
         className,
@@ -195,6 +227,16 @@ function PropertiesPanel({
         methods,
       };
       onUpdateElement(updatedElement);
+    } else if (selectedElement) {
+      const updatedRelationship = {
+        ...selectedElement,
+        label: relationshipLabel,
+        sourceMultiplicity,
+        targetMultiplicity,
+        sourceRole,
+        targetRole,
+      };
+      onUpdateRelationship(updatedRelationship);
     }
   };
 
@@ -251,7 +293,10 @@ function PropertiesPanel({
         }}
       >
         <h3 style={{ margin: 0, fontSize: "16px", color: "#495057" }}>
-          🏷️ Propiedades
+          🏷️{" "}
+          {selectedElement && "className" in selectedElement
+            ? "Propiedades"
+            : "Propiedades de Relación"}
         </h3>
         <button
           onClick={onClose}
@@ -268,147 +313,298 @@ function PropertiesPanel({
         </button>
       </div>
 
-      <div style={{ marginBottom: "15px" }}>
-        <label
-          style={{ display: "block", marginBottom: "5px", fontWeight: "bold" }}
-        >
-          Nombre de la clase:
-        </label>
-        <input
-          type="text"
-          value={className}
-          onChange={(e) => setClassName(e.target.value)}
-          style={{
-            width: "100%",
-            padding: "8px",
-            border: "1px solid #ced4da",
-            borderRadius: "4px",
-            fontSize: "14px",
-          }}
-        />
-      </div>
-
-      <div style={{ marginBottom: "15px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "5px",
-          }}
-        >
-          <label style={{ fontWeight: "bold" }}>Atributos:</label>
-          <button
-            onClick={addAttribute}
-            style={{
-              background: "#28a745",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              padding: "4px 8px",
-              fontSize: "12px",
-              cursor: "pointer",
-            }}
-          >
-            + Agregar
-          </button>
-        </div>
-        {attributes.map((attr, index) => (
-          <div
-            key={index}
-            style={{ display: "flex", gap: "5px", marginBottom: "5px" }}
-          >
-            <input
-              type="text"
-              value={attr}
-              onChange={(e) => updateAttribute(index, e.target.value)}
-              placeholder="- atributo: Tipo"
+      {!(selectedElement && "className" in selectedElement) &&
+      selectedElement ? (
+        <>
+          <div style={{ marginBottom: "15px" }}>
+            <label
               style={{
-                flex: 1,
-                padding: "6px",
-                border: "1px solid #ced4da",
-                borderRadius: "4px",
-                fontSize: "12px",
-              }}
-            />
-            <button
-              onClick={() => removeAttribute(index)}
-              style={{
-                background: "#dc3545",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                padding: "6px",
-                cursor: "pointer",
-                fontSize: "12px",
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "bold",
               }}
             >
-              ×
-            </button>
+              Tipo de relación:
+            </label>
+            <span style={{ fontSize: "14px", color: "#495057" }}>
+              {(selectedElement as UMLRelationship).relationship}
+            </span>
           </div>
-        ))}
-      </div>
 
-      <div style={{ marginBottom: "15px" }}>
-        <div
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            alignItems: "center",
-            marginBottom: "5px",
-          }}
-        >
-          <label style={{ fontWeight: "bold" }}>Métodos:</label>
-          <button
-            onClick={addMethod}
-            style={{
-              background: "#28a745",
-              color: "white",
-              border: "none",
-              borderRadius: "4px",
-              padding: "4px 8px",
-              fontSize: "12px",
-              cursor: "pointer",
-            }}
-          >
-            + Agregar
-          </button>
-        </div>
-        {methods.map((method, index) => (
-          <div
-            key={index}
-            style={{ display: "flex", gap: "5px", marginBottom: "5px" }}
-          >
-            <input
-              type="text"
-              value={method}
-              onChange={(e) => updateMethod(index, e.target.value)}
-              placeholder="+ metodo(): Tipo"
+          <div style={{ marginBottom: "15px" }}>
+            <label
               style={{
-                flex: 1,
-                padding: "6px",
-                border: "1px solid #ced4da",
-                borderRadius: "4px",
-                fontSize: "12px",
-              }}
-            />
-            <button
-              onClick={() => removeMethod(index)}
-              style={{
-                background: "#dc3545",
-                color: "white",
-                border: "none",
-                borderRadius: "4px",
-                padding: "6px",
-                cursor: "pointer",
-                fontSize: "12px",
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "bold",
               }}
             >
-              ×
-            </button>
+              Etiqueta:
+            </label>
+            <input
+              type="text"
+              value={relationshipLabel}
+              onChange={(e) => setRelationshipLabel(e.target.value)}
+              placeholder="Etiqueta opcional"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "14px",
+              }}
+            />
           </div>
-        ))}
-      </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "bold",
+              }}
+            >
+              Multiplicidad origen:
+            </label>
+            <input
+              type="text"
+              value={sourceMultiplicity}
+              onChange={(e) => setSourceMultiplicity(e.target.value)}
+              placeholder="ej: 1, *, 0..1"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "14px",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "bold",
+              }}
+            >
+              Multiplicidad destino:
+            </label>
+            <input
+              type="text"
+              value={targetMultiplicity}
+              onChange={(e) => setTargetMultiplicity(e.target.value)}
+              placeholder="ej: 1, *, 0..1"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "14px",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "bold",
+              }}
+            >
+              Rol origen:
+            </label>
+            <input
+              type="text"
+              value={sourceRole}
+              onChange={(e) => setSourceRole(e.target.value)}
+              placeholder="Rol opcional"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "14px",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "bold",
+              }}
+            >
+              Rol destino:
+            </label>
+            <input
+              type="text"
+              value={targetRole}
+              onChange={(e) => setTargetRole(e.target.value)}
+              placeholder="Rol opcional"
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "14px",
+              }}
+            />
+          </div>
+        </>
+      ) : selectedElement ? (
+        <>
+          <div style={{ marginBottom: "15px" }}>
+            <label
+              style={{
+                display: "block",
+                marginBottom: "5px",
+                fontWeight: "bold",
+              }}
+            >
+              Nombre de la clase:
+            </label>
+            <input
+              type="text"
+              value={className}
+              onChange={(e) => setClassName(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "8px",
+                border: "1px solid #ced4da",
+                borderRadius: "4px",
+                fontSize: "14px",
+              }}
+            />
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "5px",
+              }}
+            >
+              <label style={{ fontWeight: "bold" }}>Atributos:</label>
+              <button
+                onClick={addAttribute}
+                style={{
+                  background: "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                + Agregar
+              </button>
+            </div>
+            {attributes.map((attr, index) => (
+              <div
+                key={index}
+                style={{ display: "flex", gap: "5px", marginBottom: "5px" }}
+              >
+                <input
+                  type="text"
+                  value={attr}
+                  onChange={(e) => updateAttribute(index, e.target.value)}
+                  placeholder="- atributo: Tipo"
+                  style={{
+                    flex: 1,
+                    padding: "6px",
+                    border: "1px solid #ced4da",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                  }}
+                />
+                <button
+                  onClick={() => removeAttribute(index)}
+                  style={{
+                    background: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginBottom: "15px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "5px",
+              }}
+            >
+              <label style={{ fontWeight: "bold" }}>Métodos:</label>
+              <button
+                onClick={addMethod}
+                style={{
+                  background: "#28a745",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "4px",
+                  padding: "4px 8px",
+                  fontSize: "12px",
+                  cursor: "pointer",
+                }}
+              >
+                + Agregar
+              </button>
+            </div>
+            {methods.map((method, index) => (
+              <div
+                key={index}
+                style={{ display: "flex", gap: "5px", marginBottom: "5px" }}
+              >
+                <input
+                  type="text"
+                  value={method}
+                  onChange={(e) => updateMethod(index, e.target.value)}
+                  placeholder="+ metodo(): Tipo"
+                  style={{
+                    flex: 1,
+                    padding: "6px",
+                    border: "1px solid #ced4da",
+                    borderRadius: "4px",
+                    fontSize: "12px",
+                  }}
+                />
+                <button
+                  onClick={() => removeMethod(index)}
+                  style={{
+                    background: "#dc3545",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "6px",
+                    cursor: "pointer",
+                    fontSize: "12px",
+                  }}
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
 
       <button
         onClick={handleSave}
@@ -610,7 +806,7 @@ function UMLDiagram({
     x?: number,
     y?: number
   ) => void;
-  selectedElement: CustomElement | null;
+  selectedElement: CustomElement | UMLRelationship | null;
   onSelectElement: (element: CustomElement) => void;
 }) {
   const renderElement = useCallback(
@@ -618,7 +814,13 @@ function UMLDiagram({
       return (
         <UMLClass
           element={element}
-          isSelected={selectedElement?.id === element.id}
+          isSelected={
+            !!(
+              selectedElement &&
+              "className" in selectedElement &&
+              selectedElement?.id === element.id
+            )
+          }
           onSelect={onSelectElement}
         />
       );
@@ -640,7 +842,7 @@ function UMLDiagram({
 
       console.log("Drop event on diagram:", template, classTemplates[template]);
 
-      if (template && classTemplates[template]) {
+      if (template) {
         // Calcular la posición relativa al diagrama
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -696,22 +898,34 @@ function UMLDiagram({
 function App() {
   const [dynamicElements, setDynamicElements] = useState<CustomElement[]>([]);
   const [elementCounter, setElementCounter] = useState(5);
-  const [selectedElement, setSelectedElement] = useState<CustomElement | null>(
-    null
-  );
+  const [selectedElement, setSelectedElement] = useState<
+    CustomElement | UMLRelationship | null
+  >(null);
   const [updateCounter, setUpdateCounter] = useState(0);
-  
+
   // Estados para manejar relaciones UML
   const [relationshipMode, setRelationshipMode] = useState<string | null>(null);
-  const [firstSelectedElement, setFirstSelectedElement] = useState<CustomElement | null>(null);
+  const [firstSelectedElement, setFirstSelectedElement] =
+    useState<CustomElement | null>(null);
   const [dynamicLinks, setDynamicLinks] = useState<UMLRelationship[]>([]);
 
   const handleAddElement = useCallback(
-    (template: keyof typeof classTemplates | string, x?: number, y?: number) => {
+    (
+      template: keyof typeof classTemplates | string,
+      x?: number,
+      y?: number
+    ) => {
       console.log("Adding element/relationship:", template, x, y);
-      
+
       // Verificar si es una relación UML
-      const relationshipTypes = ['association', 'aggregation', 'composition', 'generalization', 'dependency', 'realization'];
+      const relationshipTypes = [
+        "association",
+        "aggregation",
+        "composition",
+        "generalization",
+        "dependency",
+        "realization",
+      ];
       if (relationshipTypes.includes(template)) {
         // Activar modo de relación
         setRelationshipMode(template);
@@ -720,7 +934,8 @@ function App() {
         return;
       }
 
-      const templateData = classTemplates[template as keyof typeof classTemplates];
+      const templateData =
+        classTemplates[template as keyof typeof classTemplates];
 
       // Usar posición proporcionada o calcular automáticamente
       let newX: number, newY: number;
@@ -757,37 +972,43 @@ function App() {
     [dynamicElements, elementCounter]
   );
 
-  const handleSelectElement = useCallback((element: CustomElement) => {
-    if (relationshipMode) {
-      // Modo de relación activo
-      if (!firstSelectedElement) {
-        // Seleccionar primer elemento
-        setFirstSelectedElement(element);
-        console.log("First element selected for relationship:", element.className);
-      } else if (firstSelectedElement.id !== element.id) {
-        // Seleccionar segundo elemento y crear relación
-        const newRelationship: UMLRelationship = {
-          id: `link-${Date.now()}`,
-          source: firstSelectedElement.id,
-          target: element.id,
-          relationship: relationshipMode as UMLRelationship['relationship'],
-          label: relationshipMode,
-        };
-        
-        setDynamicLinks(prev => [...prev, newRelationship]);
-        setUpdateCounter(prev => prev + 1); // Forzar re-render
-        
-        console.log("Relationship created:", newRelationship);
-        
-        // Resetear modo de relación
-        setRelationshipMode(null);
-        setFirstSelectedElement(null);
+  const handleSelectElement = useCallback(
+    (element: CustomElement) => {
+      if (relationshipMode) {
+        // Modo de relación activo
+        if (!firstSelectedElement) {
+          // Seleccionar primer elemento
+          setFirstSelectedElement(element);
+          console.log(
+            "First element selected for relationship:",
+            element.className
+          );
+        } else if (firstSelectedElement.id !== element.id) {
+          // Seleccionar segundo elemento y crear relación
+          const newRelationship: UMLRelationship = {
+            id: `link-${Date.now()}`,
+            source: firstSelectedElement.id,
+            target: element.id,
+            relationship: relationshipMode as UMLRelationship["relationship"],
+            label: relationshipMode,
+          };
+
+          setDynamicLinks((prev) => [...prev, newRelationship]);
+          setUpdateCounter((prev) => prev + 1); // Forzar re-render
+
+          console.log("Relationship created:", newRelationship);
+
+          // Resetear modo de relación
+          setRelationshipMode(null);
+          setFirstSelectedElement(null);
+        }
+      } else {
+        // Modo normal - seleccionar elemento para edición
+        setSelectedElement(element);
       }
-    } else {
-      // Modo normal - seleccionar elemento para edición
-      setSelectedElement(element);
-    }
-  }, [relationshipMode, firstSelectedElement]);
+    },
+    [relationshipMode, firstSelectedElement]
+  );
 
   const handleUpdateElement = useCallback((updatedElement: CustomElement) => {
     // Actualizar en elementos dinámicos
@@ -799,6 +1020,22 @@ function App() {
     // Forzar recreación del grafo
     setUpdateCounter((prev) => prev + 1);
   }, []);
+
+  const handleUpdateRelationship = useCallback(
+    (updatedRelationship: UMLRelationship) => {
+      // Actualizar en relaciones dinámicas
+      setDynamicLinks((prev) =>
+        prev.map((rel) =>
+          rel.id === updatedRelationship.id ? updatedRelationship : rel
+        )
+      );
+      // Actualizar relación seleccionada
+      setSelectedElement(updatedRelationship);
+      // Forzar recreación del grafo
+      setUpdateCounter((prev) => prev + 1);
+    },
+    []
+  );
 
   const handleDeselectElement = useCallback(() => {
     if (relationshipMode) {
@@ -814,7 +1051,7 @@ function App() {
 
   // Combinar elementos iniciales con dinámicos
   const allElements = [...initialElements, ...dynamicElements];
-  
+
   // Combinar links iniciales con dinámicos
   const allLinks = [...initialLinks, ...dynamicLinks];
 
@@ -841,12 +1078,26 @@ function App() {
       <Toolbar />
 
       <div style={{ flex: 1 }}>
-        <h1>Editor de Clases UML con @joint/react</h1>
-        <p>
-          Diagrama UML interactivo que muestra clases con atributos, métodos y
-          relaciones. Arrastra elementos desde la barra lateral para agregarlos
-          al diagrama. Haz clic en un elemento para editar sus propiedades.
-        </p>
+        {dynamicLinks.length > 0 && (
+          <button
+            onClick={() => {
+              const lastRelationship = dynamicLinks[dynamicLinks.length - 1];
+              setSelectedElement(lastRelationship);
+            }}
+            style={{
+              background: "#17a2b8",
+              color: "white",
+              border: "none",
+              borderRadius: "4px",
+              padding: "8px 16px",
+              cursor: "pointer",
+              fontSize: "14px",
+              marginBottom: "10px",
+            }}
+          >
+            🔗 Seleccionar Última Relación
+          </button>
+        )}
 
         {relationshipMode && (
           <div
@@ -859,12 +1110,11 @@ function App() {
               color: "#856404",
             }}
           >
-            <strong>Modo Relación Activo:</strong> Creando {relationshipMode}. 
-            {firstSelectedElement 
+            <strong>Modo Relación Activo:</strong> Creando {relationshipMode}.
+            {firstSelectedElement
               ? `Primer elemento seleccionado: "${firstSelectedElement.className}". Haz clic en el segundo elemento.`
-              : "Haz clic en el primer elemento para iniciar la relación."
-            }
-            <button 
+              : "Haz clic en el primer elemento para iniciar la relación."}
+            <button
               onClick={() => {
                 setRelationshipMode(null);
                 setFirstSelectedElement(null);
@@ -903,6 +1153,7 @@ function App() {
             <PropertiesPanel
               selectedElement={selectedElement}
               onUpdateElement={handleUpdateElement}
+              onUpdateRelationship={handleUpdateRelationship}
               onClose={handleDeselectElement}
             />
           )}
