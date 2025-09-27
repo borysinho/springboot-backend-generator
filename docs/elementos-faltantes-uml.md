@@ -1,4 +1,19 @@
-# Elementos UML Faltantes en el Editor
+# Elem## Elementos Implementados ✅
+
+### En la Barra de Herramientas (Elementos UML Oficiales):
+- 📄 **Clase** - Clase básica con atributos y métodos
+- 🔗 **Interfaz** - Define contratos sin implementación
+- 🔢 **Enumeración** - Conjunto finito de valores
+- 📦 **Paquete** - Contenedor organizacional
+- 📝 **Nota** - Elemento de anotación/comentario
+
+### Relaciones UML Implementadas ✅
+- ➡️ **Asociación** - Relación estructural básica entre clases
+- ◇ **Agregación** - Asociación "parte de" con vida independiente
+- ◆ **Composición** - Asociación fuerte "parte de" con vida dependiente
+- △ **Generalización** - Relación "es-un" (herencia)
+- ⤸ **Dependencia** - Relación de uso entre elementos
+- △ **Realización** - Relación interfaz-implementaciónaltantes en el Editor
 
 ## Resumen Ejecutivo
 
@@ -34,51 +49,32 @@ El editor UML actual tiene implementados los elementos básicos de clases, pero 
 
 ## Elementos Faltantes ❌
 
-### 1. RELACIONES ENTRE CLASES (CRÍTICAS) 🔴
+### 1. CARACTERÍSTICAS ADICIONALES DE RELACIONES �
+- **Multiplicidad** - Indicadores numéricos (1, *, 0..1) en los extremos de asociaciones
+- **Roles** - Nombres descriptivos de los extremos de las asociaciones
+- **Navegabilidad** - Flechas que indican dirección de navegación
+- **Restricciones** - Condiciones { } en las relaciones
 
-#### Asociación (Association)
+### 2. CARACTERÍSTICAS AVANZADAS DE CLASES 🔶
+- **Visibilidad de paquete (~)** - Actualmente solo +, -, #
+- **Propiedades estáticas** - Atributos/métodos compartidos (subrayado)
+- **Métodos abstractos** - Sin implementación (nombres en cursiva)
+- **Clases abstractas** - Nombres en cursiva
+- **Parámetros de dirección** - in, out, inout en operaciones
 
-- **Descripción**: Relación estructural básica entre clases
-- **Notación**: Línea sólida entre clases
-- **Propósito**: Mostrar conexiones entre clases
-- **Ejemplo**: `Persona` -- `Dirección`
+### 3. ELEMENTOS DE ANOTACIÓN 📝
+- **Estereotipos adicionales** - Extensiones como <<entity>>, <<boundary>>, <<control>>
+- **Notas conectadas** - Notas vinculadas a elementos específicos
 
-#### Agregación (Aggregation)
+### 4. ELEMENTOS DE INSTANCIA 👥
+- **Objetos (Instances)** - Instancias específicas de clases
+- **Enlaces (Links)** - Instancias de asociaciones entre objetos
 
-- **Descripción**: Asociación "parte de" con vida independiente
-- **Notación**: Línea con diamante vacío en el extremo del contenedor
-- **Propósito**: Una clase contiene otras pero pueden existir independientemente
-- **Ejemplo**: `Biblioteca` ◇-- `Libro`
-
-#### Composición (Composition)
-
-- **Descripción**: Asociación fuerte "parte de" con vida dependiente
-- **Notación**: Línea con diamante lleno en el extremo del contenedor
-- **Propósito**: Las partes se destruyen cuando se destruye el todo
-- **Ejemplo**: `Casa` ◆-- `Habitación`
-
-#### Generalización/Herencia (Generalization)
-
-- **Descripción**: Relación "es-un" entre clases
-- **Notación**: Línea con flecha triangular hueca
-- **Propósito**: Herencia de propiedades y comportamientos
-- **Ejemplo**: `Estudiante` --▸ `Persona`
-
-#### Dependencia (Dependency)
-
-- **Descripción**: Relación de uso entre elementos
-- **Notación**: Línea punteada con flecha abierta
-- **Propósito**: Un elemento depende de otro para su funcionamiento
-- **Ejemplo**: `Controlador` ⤑ `Servicio`
-
-#### Realización (Realization)
-
-- **Descripción**: Relación entre interfaz y clase que la implementa
-- **Notación**: Línea punteada con flecha triangular hueca
-- **Propósito**: Mostrar implementación de contratos
-- **Ejemplo**: `ServicioPago` ⤑ `InterfazPago`
-
-### 2. CARACTERÍSTICAS ADICIONALES 🔶
+### 5. ELEMENTOS AVANZADOS 🔴
+- **Clasificadores anidados** - Clases dentro de otras clases
+- **Interfaces múltiples** - Herencia múltiple de interfaces
+- **Relaciones de dependencia complejas** - <<import>>, <<trace>>, etc.
+- **Plantillas (Templates)** - Clases parametrizadas
 
 #### Multiplicidad
 
@@ -208,6 +204,58 @@ Solo los elementos oficiales del estándar UML 2.5.1:
 - **Paquete** (📦)
 - **Nota** (📝)
 
+## Nuevas Funcionalidades Implementadas 🚀
+
+### Septiembre 27, 2025 - Relaciones UML
+
+Se han implementado las **6 relaciones fundamentales** de UML 2.5.1:
+
+#### 1. Asociación (➡️)
+- **Implementación**: Conexión básica entre clases
+- **Uso**: Seleccionar botón de asociación → clic en primer elemento → clic en segundo elemento
+- **Notación**: Línea sólida entre clases
+
+#### 2. Agregación (◇)
+- **Implementación**: Asociación "parte de" con vida independiente
+- **Notación**: Diamante vacío en el extremo del contenedor
+- **Ejemplo**: `Biblioteca` ◇-- `Libro`
+
+#### 3. Composición (◆)
+- **Implementación**: Asociación fuerte "parte de" con vida dependiente
+- **Notación**: Diamante lleno en el extremo del contenedor
+- **Ejemplo**: `Casa` ◆-- `Habitación`
+
+#### 4. Generalización (△)
+- **Implementación**: Herencia entre clases
+- **Notación**: Flecha triangular hueca
+- **Ejemplo**: `Estudiante` --▸ `Persona`
+
+#### 5. Dependencia (⤸)
+- **Implementación**: Relación de uso entre elementos
+- **Notación**: Línea punteada con flecha
+- **Ejemplo**: `Controlador` ⤑ `Servicio`
+
+#### 6. Realización (△)
+- **Implementación**: Interfaz implementada por clase
+- **Notación**: Línea punteada con flecha triangular
+- **Ejemplo**: `ServicioPago` ⤑ `InterfazPago`
+
+#### Características del Modo Relación:
+- **Indicador visual**: Muestra qué tipo de relación se está creando
+- **Selección secuencial**: Primero elemento A, luego elemento B
+- **Cancelación**: Botón para salir del modo relación
+- **Feedback**: Mensajes informativos durante el proceso
+
+#### Archivos Modificados:
+- `src/App.tsx`: 
+  - Agregadas relaciones a `toolbarItems`
+  - Nuevo tipo `UMLRelationship`
+  - Estados para manejo de relaciones (`relationshipMode`, `firstSelectedElement`, `dynamicLinks`)
+  - Lógica de selección secuencial para crear relaciones
+  - Indicador visual de modo relación
+  - Integración con `GraphProvider` para renderizar relaciones
+- `docs/elementos-faltantes-uml.md`: Actualizada documentación
+
 #### Archivos Modificados:
 
 - `src/App.tsx`: Eliminados elementos no estándar de `toolbarItems` y `classTemplates`
@@ -240,4 +288,4 @@ Se eliminó completamente el diagrama de ejemplo que incluía las clases **Perso
 _Documento generado el: September 27, 2025_
 _Proyecto: Editor UML con JointJS_
 _Versión UML: 2.5.1_
-_Última actualización: Eliminación de diagrama de ejemplo_
+_Última actualización: Implementación de relaciones UML completada_

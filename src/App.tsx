@@ -21,6 +21,19 @@ type CustomElement = {
   height: number;
 };
 
+// Definir el tipo para relaciones UML
+type UMLRelationship = {
+  id: string;
+  source: string;
+  target: string;
+  relationship: 'association' | 'aggregation' | 'composition' | 'generalization' | 'dependency' | 'realization';
+  label?: string;
+  sourceMultiplicity?: string;
+  targetMultiplicity?: string;
+  sourceRole?: string;
+  targetRole?: string;
+};
+
 const initialElements = createElements([
   // Diagrama vacío - sin elementos de ejemplo
 ]);
@@ -75,6 +88,12 @@ function Toolbar() {
     { key: "enumeration", label: "🔢 Enumeración", color: "#795548" },
     { key: "package", label: "📦 Paquete", color: "#3F51B5" },
     { key: "note", label: "📝 Nota", color: "#FFC107" },
+    { key: "association", label: "➡️ Asociación", color: "#FF5722" },
+    { key: "aggregation", label: "◇ Agregación", color: "#9C27B0" },
+    { key: "composition", label: "◆ Composición", color: "#673AB7" },
+    { key: "generalization", label: "△ Generalización", color: "#3F51B5" },
+    { key: "dependency", label: "⤸ Dependencia", color: "#607D8B" },
+    { key: "realization", label: "△ Realización", color: "#00BCD4" },
   ];
 
   return (
@@ -102,7 +121,7 @@ function Toolbar() {
           paddingBottom: "10px",
         }}
       >
-        🛠️ Elementos UML
+        🛠️ Elementos y Relaciones UML
       </h3>
 
       {toolbarItems.map((item) => (
@@ -681,11 +700,27 @@ function App() {
     null
   );
   const [updateCounter, setUpdateCounter] = useState(0);
+  
+  // Estados para manejar relaciones UML
+  const [relationshipMode, setRelationshipMode] = useState<string | null>(null);
+  const [firstSelectedElement, setFirstSelectedElement] = useState<CustomElement | null>(null);
+  const [dynamicLinks, setDynamicLinks] = useState<UMLRelationship[]>([]);
 
   const handleAddElement = useCallback(
-    (template: keyof typeof classTemplates, x?: number, y?: number) => {
-      console.log("Adding element:", template, x, y);
-      const templateData = classTemplates[template];
+    (template: keyof typeof classTemplates | string, x?: number, y?: number) => {
+      console.log("Adding element/relationship:", template, x, y);
+      
+      // Verificar si es una relación UML
+      const relationshipTypes = ['association', 'aggregation', 'composition', 'generalization', 'dependency', 'realization'];
+      if (relationshipTypes.includes(template)) {
+        // Activar modo de relación
+        setRelationshipMode(template);
+        setFirstSelectedElement(null);
+        console.log("Relationship mode activated:", template);
+        return;
+      }
+
+      const templateData = classTemplates[template as keyof typeof classTemplates];
 
       // Usar posición proporcionada o calcular automáticamente
       let newX: number, newY: number;
@@ -723,8 +758,36 @@ function App() {
   );
 
   const handleSelectElement = useCallback((element: CustomElement) => {
-    setSelectedElement(element);
-  }, []);
+    if (relationshipMode) {
+      // Modo de relación activo
+      if (!firstSelectedElement) {
+        // Seleccionar primer elemento
+        setFirstSelectedElement(element);
+        console.log("First element selected for relationship:", element.className);
+      } else if (firstSelectedElement.id !== element.id) {
+        // Seleccionar segundo elemento y crear relación
+        const newRelationship: UMLRelationship = {
+          id: `link-${Date.now()}`,
+          source: firstSelectedElement.id,
+          target: element.id,
+          relationship: relationshipMode as UMLRelationship['relationship'],
+          label: relationshipMode,
+        };
+        
+        setDynamicLinks(prev => [...prev, newRelationship]);
+        setUpdateCounter(prev => prev + 1); // Forzar re-render
+        
+        console.log("Relationship created:", newRelationship);
+        
+        // Resetear modo de relación
+        setRelationshipMode(null);
+        setFirstSelectedElement(null);
+      }
+    } else {
+      // Modo normal - seleccionar elemento para edición
+      setSelectedElement(element);
+    }
+  }, [relationshipMode, firstSelectedElement]);
 
   const handleUpdateElement = useCallback((updatedElement: CustomElement) => {
     // Actualizar en elementos dinámicos
@@ -738,11 +801,22 @@ function App() {
   }, []);
 
   const handleDeselectElement = useCallback(() => {
-    setSelectedElement(null);
-  }, []);
+    if (relationshipMode) {
+      // Cancelar modo de relación
+      setRelationshipMode(null);
+      setFirstSelectedElement(null);
+      console.log("Relationship mode cancelled");
+    } else {
+      // Deseleccionar elemento normal
+      setSelectedElement(null);
+    }
+  }, [relationshipMode]);
 
   // Combinar elementos iniciales con dinámicos
   const allElements = [...initialElements, ...dynamicElements];
+  
+  // Combinar links iniciales con dinámicos
+  const allLinks = [...initialLinks, ...dynamicLinks];
 
   console.log(
     "All elements:",
@@ -774,12 +848,48 @@ function App() {
           al diagrama. Haz clic en un elemento para editar sus propiedades.
         </p>
 
+        {relationshipMode && (
+          <div
+            style={{
+              backgroundColor: "#FFF3CD",
+              border: "1px solid #FFEAA7",
+              borderRadius: "4px",
+              padding: "10px",
+              marginBottom: "10px",
+              color: "#856404",
+            }}
+          >
+            <strong>Modo Relación Activo:</strong> Creando {relationshipMode}. 
+            {firstSelectedElement 
+              ? `Primer elemento seleccionado: "${firstSelectedElement.className}". Haz clic en el segundo elemento.`
+              : "Haz clic en el primer elemento para iniciar la relación."
+            }
+            <button 
+              onClick={() => {
+                setRelationshipMode(null);
+                setFirstSelectedElement(null);
+              }}
+              style={{
+                marginLeft: "10px",
+                backgroundColor: "#6C757D",
+                color: "white",
+                border: "none",
+                borderRadius: "3px",
+                padding: "2px 6px",
+                cursor: "pointer",
+              }}
+            >
+              Cancelar
+            </button>
+          </div>
+        )}
+
         <div style={{ display: "flex", gap: "20px" }}>
           <div style={{ flex: 1 }}>
             <GraphProvider
               key={graphKey}
               initialElements={allElements}
-              initialLinks={initialLinks}
+              initialLinks={allLinks}
             >
               <UMLDiagram
                 onAddElement={handleAddElement}
