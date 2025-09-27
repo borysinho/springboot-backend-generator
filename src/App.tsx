@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useState, useEffect } from "react";
 import { GraphProvider, createElements } from "@joint/react";
 import "./App.css";
 
@@ -198,6 +198,25 @@ function App() {
       setSelectedElement(null);
     }
   }, [relationshipMode]);
+
+  // Efecto para manejar la tecla Escape y cerrar el panel de propiedades
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && selectedElement) {
+        handleDeselectElement();
+      }
+    };
+
+    // Agregar el event listener cuando hay un elemento seleccionado
+    if (selectedElement) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    // Cleanup: remover el event listener
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedElement, handleDeselectElement]); // Dependencia en selectedElement y handleDeselectElement
 
   // Combinar elementos iniciales con dinámicos
   const allElements = [...initialElements, ...dynamicElements];
