@@ -115,21 +115,6 @@ const classTemplates = {
     attributes: [],
     methods: ["+ metodoAbstracto(): void"],
   },
-  abstract: {
-    className: "ClaseAbstracta",
-    attributes: ["- atributo: String"],
-    methods: ["+ metodoConcreto(): void", "# metodoAbstracto(): void"],
-  },
-  entity: {
-    className: "Entidad",
-    attributes: ["- id: int", "- nombre: String", "- fechaCreacion: Date"],
-    methods: ["+ getId(): int", "+ setNombre(nombre: String): void"],
-  },
-  controller: {
-    className: "Controlador",
-    attributes: ["- servicio: Servicio"],
-    methods: ["+ procesarSolicitud(): Response", "+ validarDatos(): boolean"],
-  },
   enumeration: {
     className: "Enumeracion",
     attributes: ["VALOR1", "VALOR2", "VALOR3"],
@@ -144,31 +129,6 @@ const classTemplates = {
     className: "Nota",
     attributes: ["Esta es una nota importante", "sobre el diseño del sistema"],
     methods: [],
-  },
-  utility: {
-    className: "Utilidad",
-    attributes: [],
-    methods: ["+ metodoEstatico(): void", "+ helper(): String"],
-  },
-  service: {
-    className: "Servicio",
-    attributes: ["- repositorio: Repositorio"],
-    methods: ["+ ejecutar(): void", "+ validar(): boolean"],
-  },
-  repository: {
-    className: "Repositorio",
-    attributes: ["- conexion: Connection"],
-    methods: ["+ guardar(objeto: Object): void", "+ buscar(id: int): Object"],
-  },
-  dto: {
-    className: "DTO",
-    attributes: ["- campo1: String", "- campo2: int"],
-    methods: ["+ getCampo1(): String", "+ setCampo1(campo1: String): void"],
-  },
-  exception: {
-    className: "Excepcion",
-    attributes: ["- mensaje: String", "- causa: Throwable"],
-    methods: ["+ getMensaje(): String", "+ getCausa(): Throwable"],
   },
 };
 
@@ -185,17 +145,9 @@ function Toolbar() {
   const toolbarItems = [
     { key: "class", label: "📄 Clase", color: "#4CAF50" },
     { key: "interface", label: "🔗 Interfaz", color: "#2196F3" },
-    { key: "abstract", label: "🎭 Abstracta", color: "#FF9800" },
-    { key: "entity", label: "🗃️ Entidad", color: "#9C27B0" },
-    { key: "controller", label: "🎮 Controlador", color: "#607D8B" },
     { key: "enumeration", label: "🔢 Enumeración", color: "#795548" },
     { key: "package", label: "📦 Paquete", color: "#3F51B5" },
     { key: "note", label: "📝 Nota", color: "#FFC107" },
-    { key: "utility", label: "🔧 Utilidad", color: "#009688" },
-    { key: "service", label: "⚙️ Servicio", color: "#E91E63" },
-    { key: "repository", label: "💾 Repositorio", color: "#673AB7" },
-    { key: "dto", label: "📊 DTO", color: "#00BCD4" },
-    { key: "exception", label: "⚠️ Excepción", color: "#F44336" },
   ];
 
   return (
