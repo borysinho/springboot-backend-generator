@@ -1,10 +1,5 @@
 import React, { useCallback, useState } from "react";
-import {
-  GraphProvider,
-  Paper,
-  createElements,
-  useGraph,
-} from "@joint/react";
+import { GraphProvider, Paper, createElements, useGraph } from "@joint/react";
 import "./App.css";
 
 // Definir elementos UML (clases)
@@ -78,12 +73,20 @@ const convertRelationshipToLink = (relationship: UMLRelationship) => {
   // Agregar multiplicidad en el extremo source (origen)
   if (relationship.sourceMultiplicity) {
     link.labels.push({
-      position: 0.1, // Cerca del extremo source
+      position: 0.15, // Más cerca del extremo source, alejado de la etiqueta central
       attrs: {
         text: {
           text: relationship.sourceMultiplicity,
-          fill: "#666",
-          fontSize: 11,
+          fill: "#000",
+          fontSize: 12,
+          fontWeight: "bold",
+        },
+        rect: {
+          fill: "white",
+          stroke: "#333",
+          strokeWidth: 1,
+          rx: 3,
+          ry: 3,
         },
       },
     });
@@ -92,12 +95,20 @@ const convertRelationshipToLink = (relationship: UMLRelationship) => {
   // Agregar multiplicidad en el extremo target (destino)
   if (relationship.targetMultiplicity) {
     link.labels.push({
-      position: 0.9, // Cerca del extremo target
+      position: 0.85, // Más cerca del extremo target, alejado de la etiqueta central
       attrs: {
         text: {
           text: relationship.targetMultiplicity,
-          fill: "#666",
-          fontSize: 11,
+          fill: "#000",
+          fontSize: 12,
+          fontWeight: "bold",
+        },
+        rect: {
+          fill: "white",
+          stroke: "#333",
+          strokeWidth: 1,
+          rx: 3,
+          ry: 3,
         },
       },
     });
@@ -1025,20 +1036,23 @@ function UMLDiagram({
   React.useEffect(() => {
     if (!graph) return;
 
-    const handleElementMove = (element: { id: string; position: () => { x: number; y: number } }) => {
+    const handleElementMove = (element: {
+      id: string;
+      position: () => { x: number; y: number };
+    }) => {
       const position = element.position();
       const elementId = element.id;
-      
+
       // Actualizar la posición en el estado
       onUpdateElementPosition(elementId, position.x, position.y);
     };
 
     // Escuchar el evento 'change:position' en todos los elementos
-    graph.on('change:position', handleElementMove);
+    graph.on("change:position", handleElementMove);
 
     // Cleanup
     return () => {
-      graph.off('change:position', handleElementMove);
+      graph.off("change:position", handleElementMove);
     };
   }, [graph, onUpdateElementPosition]);
 
@@ -1162,9 +1176,7 @@ function App() {
     (elementId: string, x: number, y: number) => {
       // Actualizar la posición del elemento en dynamicElements
       setDynamicElements((prev) =>
-        prev.map((el) =>
-          el.id === elementId ? { ...el, x, y } : el
-        )
+        prev.map((el) => (el.id === elementId ? { ...el, x, y } : el))
       );
       console.log(`Element ${elementId} moved to:`, x, y);
     },
