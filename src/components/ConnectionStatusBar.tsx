@@ -8,6 +8,15 @@ interface User {
   connectedAt: Date;
 }
 
+interface JsonPatchOperation {
+  op: "add" | "remove" | "replace" | "move" | "copy" | "test";
+  path: string;
+  value?: unknown;
+  from?: string;
+  timestamp: Date;
+  description: string;
+}
+
 interface ConnectionStatusBarProps {
   className?: string;
 }
@@ -20,6 +29,52 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
   const [totalUsers, setTotalUsers] = useState(0);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showDiagramInfo, setShowDiagramInfo] = useState(false);
+  const [jsonPatchOperations, setJsonPatchOperations] = useState<
+    JsonPatchOperation[]
+  >([
+    {
+      op: "add",
+      path: "/classes/-",
+      value: { id: "class_1", name: "User" },
+      timestamp: new Date(Date.now() - 300000), // 5 minutos atrás
+      description: "Clase User creada",
+    },
+    {
+      op: "add",
+      path: "/classes/-",
+      value: { id: "class_2", name: "Admin" },
+      timestamp: new Date(Date.now() - 240000), // 4 minutos atrás
+      description: "Clase Admin creada",
+    },
+    {
+      op: "add",
+      path: "/relationships/-",
+      value: { type: "inheritance", from: "class_2", to: "class_1" },
+      timestamp: new Date(Date.now() - 180000), // 3 minutos atrás
+      description: "Relación de herencia creada entre Admin y User",
+    },
+  ]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (
+        showDiagramInfo &&
+        !target.closest(".diagram-info-btn") &&
+        !target.closest(".diagram-operations-dropdown")
+      ) {
+        setShowDiagramInfo(false);
+      }
+    };
+
+    if (showDiagramInfo) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDiagramInfo]);
 
   useEffect(() => {
     // Conectar al servidor Socket.IO
@@ -49,6 +104,16 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
       }) => {
         setUsers(data.connectedUsers);
         setTotalUsers(data.totalUsers);
+
+        // Agregar operación JSON Patch simulada
+        const operation: JsonPatchOperation = {
+          op: "add",
+          path: "/users/-",
+          value: { id: data.userId, name: data.userName },
+          timestamp: new Date(),
+          description: `Usuario ${data.userName} se conectó`,
+        };
+        setJsonPatchOperations((prev) => [operation, ...prev.slice(0, 9)]); // Mantener solo las últimas 10
       }
     );
 
@@ -62,6 +127,15 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
       }) => {
         setUsers(data.connectedUsers);
         setTotalUsers(data.totalUsers);
+
+        // Agregar operación JSON Patch simulada
+        const operation: JsonPatchOperation = {
+          op: "remove",
+          path: `/users/${data.userId}`,
+          timestamp: new Date(),
+          description: `Usuario ${data.userName} se desconectó`,
+        };
+        setJsonPatchOperations((prev) => [operation, ...prev.slice(0, 9)]); // Mantener solo las últimas 10
       }
     );
 
@@ -153,119 +227,69 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
       </div>
 
       {showDiagramInfo && (
-        <div
-          className="diagram-info-modal-overlay"
-          onClick={() => setShowDiagramInfo(false)}
-        >
-          <div
-            className="diagram-info-modal"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="diagram-info-header">
-              <h3>🔧 Ensamblaje del Diagrama en Tiempo Real</h3>
-              <button
-                className="close-modal-btn"
-                onClick={() => setShowDiagramInfo(false)}
-              >
-                ✕
-              </button>
-            </div>
-            <div className="diagram-info-content">
-              <p>
-                <strong>¿Cómo se construye tu diagrama?</strong>
-              </p>
+        <div className="diagram-operations-dropdown">
+          <div className="dropdown-header">
+            <h4>� Operaciones en Tiempo Real</h4>
+            <span className="operations-count">
+              {jsonPatchOperations.length} operaciones
+            </span>
+          </div>
 
-              <p>
-                Cada acción que realizas en la interfaz se traduce
-                automáticamente a operaciones
-                <strong>JSON Patch</strong> que modifican el estado del diagrama
-                de manera precisa y eficiente.
-              </p>
-
-              <h4>📝 Operaciones Soportadas:</h4>
-
-              <div className="operation-example">
-                <strong>➕ Agregar Clase:</strong>
-                <code>
-                  {
-                    '{ "op": "add", "path": "/classes/-", "value": { "id": "class_1", "name": "User" } }'
-                  }
-                </code>
+          <div className="operations-list">
+            {jsonPatchOperations.length === 0 ? (
+              <div className="no-operations">
+                <span>📝</span>
+                <p>No hay operaciones recientes</p>
+                <small>
+                  Las operaciones aparecerán aquí cuando edites el diagrama
+                </small>
               </div>
+            ) : (
+              jsonPatchOperations.map((operation, index) => (
+                <div
+                  key={`${operation.timestamp.getTime()}-${index}`}
+                  className="operation-item"
+                >
+                  <div className="operation-icon">
+                    {operation.op === "add" && "➕"}
+                    {operation.op === "remove" && "🗑️"}
+                    {operation.op === "replace" && "🔄"}
+                    {operation.op === "move" && "📍"}
+                    {operation.op === "copy" && "📋"}
+                    {operation.op === "test" && "✅"}
+                  </div>
+                  <div className="operation-details">
+                    <div className="operation-description">
+                      {operation.description}
+                    </div>
+                    <div className="operation-code">
+                      <code>
+                        {JSON.stringify(
+                          {
+                            op: operation.op,
+                            path: operation.path,
+                            ...(operation.value
+                              ? { value: operation.value }
+                              : {}),
+                          },
+                          null,
+                          0
+                        )}
+                      </code>
+                    </div>
+                    <div className="operation-timestamp">
+                      {operation.timestamp.toLocaleTimeString()}
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
 
-              <div className="operation-example">
-                <strong>🔄 Renombrar Elemento:</strong>
-                <code>
-                  {
-                    '{ "op": "replace", "path": "/classes/0/name", "value": "Administrator" }'
-                  }
-                </code>
-              </div>
-
-              <div className="operation-example">
-                <strong>📍 Mover en Canvas:</strong>
-                <code>
-                  {
-                    '{ "op": "replace", "path": "/classes/0/position", "value": { "x": 150, "y": 250 } }'
-                  }
-                </code>
-              </div>
-
-              <div className="operation-example">
-                <strong>🔗 Crear Relación:</strong>
-                <code>
-                  {
-                    '{ "op": "add", "path": "/relationships/-", "value": { "type": "inheritance", "from": "A", "to": "B" } }'
-                  }
-                </code>
-              </div>
-
-              <div className="operation-example">
-                <strong>🗑️ Eliminar Elemento:</strong>
-                <code>{'{ "op": "remove", "path": "/classes/1" }'}</code>
-              </div>
-
-              <h4>⚡ Ventajas del Enfoque:</h4>
-              <ul>
-                <li>
-                  <strong>Precisión:</strong> Cada cambio se describe
-                  exactamente
-                </li>
-                <li>
-                  <strong>Eficiencia:</strong> Solo se transmiten los cambios,
-                  no el diagrama completo
-                </li>
-                <li>
-                  <strong>Reversibilidad:</strong> Fácil de "deshacer"
-                  operaciones
-                </li>
-                <li>
-                  <strong>Colaboración:</strong> Múltiples usuarios pueden
-                  editar simultáneamente
-                </li>
-                <li>
-                  <strong>Sincronización:</strong> Cambios se propagan en tiempo
-                  real via WebSocket
-                </li>
-              </ul>
-
-              <h4>🔄 Flujo de Trabajo:</h4>
-              <ol>
-                <li>Usuario edita el diagrama (arrastra, crea, elimina)</li>
-                <li>UI detecta el cambio y genera operación JSON Patch</li>
-                <li>Operación se envía al servidor via WebSocket</li>
-                <li>Servidor valida y aplica el cambio al estado global</li>
-                <li>Cambio se propaga a todos los clientes conectados</li>
-                <li>UI de cada cliente actualiza automáticamente</li>
-              </ol>
-
-              <p className="diagram-info-footer">
-                <em>
-                  Esta arquitectura permite colaboración en tiempo real con
-                  mínimo ancho de banda y máxima precisión.
-                </em>
-              </p>
-            </div>
+          <div className="dropdown-footer">
+            <small>
+              💡 Cada cambio en el diagrama genera una operación JSON Patch
+            </small>
           </div>
         </div>
       )}
