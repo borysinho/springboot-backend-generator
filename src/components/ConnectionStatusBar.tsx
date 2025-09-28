@@ -109,17 +109,17 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
             {users.slice(0, 3).map((user) => (
               <div
                 key={user.id}
-                className="user-item"
+                className="user-avatar"
                 title={`${user.name} - Conectado ${new Date(
                   user.connectedAt
                 ).toLocaleTimeString()}`}
               >
-                {user.name.split("")[0]}
+                {user.name.charAt(0).toUpperCase()}
               </div>
             ))}
             {users.length > 3 && (
               <div
-                className="user-item more"
+                className="user-avatar more"
                 title={`${users.length - 3} más...`}
               >
                 +{users.length - 3}
