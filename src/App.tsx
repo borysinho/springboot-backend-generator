@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useEffect } from "react";
 import { GraphProvider, createElements } from "@joint/react";
-import { io, Socket } from "socket.io-client";
 import "./App.css";
 
 // Importar tipos
@@ -17,9 +16,6 @@ import { Toolbar } from "./components/Toolbar";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { UMLDiagram } from "./components/UMLDiagram";
 import Header from "./components/Header";
-
-// Importar hook de sincronización
-import { useDiagramSync } from "./hooks/useDiagramSync";
 
 const initialElements = createElements([
   // Diagrama vacío - sin elementos de ejemplo
@@ -38,71 +34,6 @@ function App() {
   const [firstSelectedElement, setFirstSelectedElement] =
     useState<CustomElement | null>(null);
   const [dynamicLinks, setDynamicLinks] = useState<UMLRelationship[]>([]);
-
-  // Estado para información del usuario actual (se obtendría del servidor Socket.IO)
-  const [currentUser, setCurrentUser] = useState<{ id: string; name: string } | null>(null);
-
-  // Hook para sincronización del diagrama
-  const { addElement, updateElementPosition, deleteElement, addRelationship, deleteRelationship } = useDiagramSync({
-    currentUserId: currentUser?.id || 'anonymous',
-    currentUserName: currentUser?.name || 'Usuario Anónimo',
-    onRemoteOperation: useCallback((operation) => {
-      console.log('🔄 Aplicando operación remota:', operation);
-
-      switch (operation.type) {
-        case 'add_element': {
-          // Agregar elemento remoto al estado local
-          const newElement = operation.data as CustomElement;
-          setDynamicElements(prev => [...prev, newElement]);
-          break;
-        }
-
-        case 'update_position': {
-          // Actualizar posición de elemento remoto
-          const positionData = operation.data as { x: number; y: number };
-          setDynamicElements(prev =>
-            prev.map(el =>
-              el.id === operation.elementId
-                ? { ...el, x: positionData.x, y: positionData.y }
-                : el
-            )
-          );
-          break;
-        }
-
-        case 'delete_element':
-          // Eliminar elemento remoto
-          setDynamicElements(prev => prev.filter(el => el.id !== operation.elementId));
-          break;
-
-        case 'add_relationship': {
-          // Agregar relación remota
-          const newRelationship = operation.data as UMLRelationship;
-          setDynamicLinks(prev => [...prev, newRelationship]);
-          break;
-        }
-
-        case 'delete_relationship':
-          // Eliminar relación remota
-          setDynamicLinks(prev => prev.filter(rel => rel.id !== operation.elementId));
-          break;
-      }
-    }, []),
-  });
-
-  // Conectar con el servidor para obtener información del usuario
-  useEffect(() => {
-    const socket = io('http://localhost:3001');
-
-    socket.on('welcome', (data: { userId: string; userName: string }) => {
-      setCurrentUser({ id: data.userId, name: data.userName });
-      console.log('👤 Usuario identificado:', data.userName);
-    });
-
-    return () => {
-      socket.disconnect();
-    };
-  }, []);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, template: keyof typeof classTemplates) => {
@@ -208,13 +139,9 @@ function App() {
 
       setDynamicElements((prev) => [...prev, newElement]);
       setElementCounter((prev) => prev + 1);
-
-      // Enviar operación al servidor para sincronización
-      addElement(newElement);
-
       console.log("Element added:", newElement);
     },
-    [dynamicElements, elementCounter, addElement]
+    [dynamicElements, elementCounter]
   );
 
   const handleUpdateElementPosition = useCallback(
@@ -223,13 +150,9 @@ function App() {
       setDynamicElements((prev) =>
         prev.map((el) => (el.id === elementId ? { ...el, x, y } : el))
       );
-
-      // Enviar operación al servidor para sincronización
-      updateElementPosition(elementId, x, y);
-
       console.log(`Element ${elementId} moved to:`, x, y);
     },
-    [updateElementPosition]
+    []
   );
 
   const handleSelectElement = useCallback(
