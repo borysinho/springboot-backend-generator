@@ -116,6 +116,30 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
     }
   }, [selectedElement, commonStereotypes]);
 
+  const handleUpdate = () => {
+    if (selectedElement && "className" in selectedElement) {
+      const updatedElement = {
+        ...selectedElement,
+        className,
+        attributes,
+        methods,
+        stereotype:
+          (useCustomStereotype ? customStereotype : stereotype) || undefined,
+      };
+      onUpdateElement(updatedElement);
+    } else if (selectedElement) {
+      const updatedRelationship = {
+        ...selectedElement,
+        label: relationshipLabel,
+        sourceMultiplicity,
+        targetMultiplicity,
+        sourceRole,
+        targetRole,
+      };
+      onUpdateRelationship(updatedRelationship);
+    }
+  };
+
   const handleSave = () => {
     if (selectedElement && "className" in selectedElement) {
       const updatedElement = {
@@ -138,6 +162,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
       };
       onUpdateRelationship(updatedRelationship);
     }
+    onClose();
   };
 
   const handleDelete = () => {
@@ -326,6 +351,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = "#e3f2fd";
+                  handleUpdate();
                 }}
               >
                 <option value="">Sin estereotipo</option>

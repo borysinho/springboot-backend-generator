@@ -104,6 +104,29 @@ io.on("connection", (socket) => {
     console.log(`📊 Total de conexiones: ${connectedUsers.size}`);
   });
 
+  // Manejar operaciones JSON Patch
+  socket.on("json_patch_operation", (operation) => {
+    console.log(`📝 Operación JSON Patch recibida de ${userName}:`);
+    console.log(`   Operación: ${operation.op}`);
+    console.log(`   Ruta: ${operation.path}`);
+    console.log(`   Descripción: ${operation.description}`);
+    console.log(`   Timestamp: ${operation.timestamp}`);
+    if (operation.value !== undefined) {
+      console.log(`   Valor:`, operation.value);
+    }
+    if (operation.from) {
+      console.log(`   Desde: ${operation.from}`);
+    }
+    console.log(`   ──────────────────────────────────`);
+
+    // Reenviar la operación a todos los demás usuarios conectados
+    socket.broadcast.emit("diagram_operation", {
+      ...operation,
+      userId: socket.id,
+      userName: userName,
+    });
+  });
+
   // Manejar mensajes de prueba (opcional)
   socket.on("ping", (data) => {
     socket.emit("pong", { ...data, serverTime: new Date() });

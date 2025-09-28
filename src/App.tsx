@@ -1,5 +1,6 @@
-import React, { useCallback, useState, useEffect } from "react";
+import React, { useCallback, useState, useEffect, useRef } from "react";
 import { GraphProvider, createElements } from "@joint/react";
+import { io, Socket } from "socket.io-client";
 import "./App.css";
 
 // Importar tipos
@@ -10,6 +11,9 @@ import { classTemplates, validateElementPosition } from "./constants/templates";
 
 // Importar utilidades
 import { convertRelationshipToLink } from "./utils/relationshipUtils";
+
+// Importar hooks
+import { useDiagramSync } from "./hooks/useDiagramSync";
 
 // Importar componentes
 import { Toolbar } from "./components/Toolbar";
@@ -25,6 +29,28 @@ const initialElements = createElements([
 function App() {
   const [dynamicElements, setDynamicElements] = useState<CustomElement[]>([]);
   const [elementCounter, setElementCounter] = useState(5);
+  const [socket, setSocket] = useState<Socket | undefined>(undefined);
+
+  // Configurar conexión Socket.IO
+  useEffect(() => {
+    const socketInstance = io("http://localhost:3001", {
+      transports: ["websocket", "polling"],
+    });
+
+    socketInstance.on("connect", () => {
+      console.log("📡 Conectado al servidor para envío de operaciones JSON Patch");
+    });
+
+    socketInstance.on("disconnect", () => {
+      console.log("📡 Desconectado del servidor");
+    });
+
+    setSocket(socketInstance);
+
+    return () => {
+      socketInstance.disconnect();
+    };
+  }, []);
   const [selectedElement, setSelectedElement] = useState<
     CustomElement | UMLRelationship | null
   >(null);
@@ -34,6 +60,20 @@ function App() {
   const [firstSelectedElement, setFirstSelectedElement] =
     useState<CustomElement | null>(null);
   const [dynamicLinks, setDynamicLinks] = useState<UMLRelationship[]>([]);
+
+  // Ref para manejar timeouts de debounce en movimientos de elementos
+  const moveTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Hook para sincronización y tracking de operaciones
+  const {
+    operations,
+    trackElementAdd,
+    trackElementRemove,
+    trackElementUpdate,
+    trackRelationshipAdd,
+    trackRelationshipRemove,
+    trackRelationshipUpdate,
+  } = useDiagramSync(socket);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, template: keyof typeof classTemplates) => {
@@ -139,9 +179,13 @@ function App() {
 
       setDynamicElements((prev) => [...prev, newElement]);
       setElementCounter((prev) => prev + 1);
+
+      // Trackear la operación
+      trackElementAdd(newElement);
+
       console.log("Element added:", newElement);
     },
-    [dynamicElements, elementCounter]
+    [dynamicElements, elementCounter, trackElementAdd]
   );
 
   const handleUpdateElementPosition = useCallback(
@@ -150,9 +194,38 @@ function App() {
       setDynamicElements((prev) =>
         prev.map((el) => (el.id === elementId ? { ...el, x, y } : el))
       );
+
+      // Cancelar timeout anterior para este elemento si existe
+      const existingTimeout = moveTimeoutsRef.current.get(elementId);
+      if (existingTimeout) {
+        clearTimeout(existingTimeout);
+      }
+
+      // Crear nuevo timeout para registrar la operación después de 300ms sin movimientos
+      const timeout = setTimeout(() => {
+        const updatedElement = dynamicElements.find(
+          (el) => el.id === elementId
+        );
+        if (updatedElement) {
+          trackElementUpdate(
+            elementId,
+            updatedElement.className || "Elemento",
+            {
+              x,
+              y,
+            }
+          );
+        }
+        // Limpiar el timeout del mapa
+        moveTimeoutsRef.current.delete(elementId);
+      }, 300);
+
+      // Almacenar el nuevo timeout
+      moveTimeoutsRef.current.set(elementId, timeout);
+
       console.log(`Element ${elementId} moved to:`, x, y);
     },
-    []
+    [dynamicElements, trackElementUpdate]
   );
 
   const handleSelectElement = useCallback(
@@ -179,6 +252,9 @@ function App() {
           setDynamicLinks((prev) => [...prev, newRelationship]);
           // El grafo se recrea automáticamente cuando cambian las dynamicLinks
 
+          // Trackear la creación de la relación
+          trackRelationshipAdd(newRelationship);
+
           console.log("Relationship created:", newRelationship);
 
           // Resetear modo de relación
@@ -190,21 +266,80 @@ function App() {
         setSelectedElement(element);
       }
     },
-    [relationshipMode, firstSelectedElement]
+    [relationshipMode, firstSelectedElement, trackRelationshipAdd]
   );
 
-  const handleUpdateElement = useCallback((updatedElement: CustomElement) => {
-    // Actualizar en elementos dinámicos
-    setDynamicElements((prev) =>
-      prev.map((el) => (el.id === updatedElement.id ? updatedElement : el))
-    );
-    // Actualizar elemento seleccionado
-    setSelectedElement(updatedElement);
-    // El grafo se recrea automáticamente cuando cambian los dynamicElements
-  }, []);
+  const handleUpdateElement = useCallback(
+    (updatedElement: CustomElement) => {
+      // Encontrar el elemento original para comparar cambios
+      const originalElement = dynamicElements.find(
+        (el) => el.id === updatedElement.id
+      );
+
+      // Actualizar en elementos dinámicos
+      setDynamicElements((prev) =>
+        prev.map((el) => (el.id === updatedElement.id ? updatedElement : el))
+      );
+      // Actualizar elemento seleccionado
+      setSelectedElement(updatedElement);
+
+      // Trackear la operación si hay cambios
+      if (originalElement) {
+        const changes: Partial<CustomElement> = {};
+        if (originalElement.className !== updatedElement.className)
+          changes.className = updatedElement.className;
+        if (
+          JSON.stringify(originalElement.attributes) !==
+          JSON.stringify(updatedElement.attributes)
+        )
+          changes.attributes = updatedElement.attributes;
+        if (
+          JSON.stringify(originalElement.methods) !==
+          JSON.stringify(updatedElement.methods)
+        )
+          changes.methods = updatedElement.methods;
+        if (
+          originalElement.x !== updatedElement.x ||
+          originalElement.y !== updatedElement.y
+        ) {
+          changes.x = updatedElement.x;
+          changes.y = updatedElement.y;
+        }
+        if (originalElement.stereotype !== updatedElement.stereotype)
+          changes.stereotype = updatedElement.stereotype;
+        if (originalElement.parentPackageId !== updatedElement.parentPackageId)
+          changes.parentPackageId = updatedElement.parentPackageId;
+        if (
+          JSON.stringify(originalElement.containedElements || []) !==
+          JSON.stringify(updatedElement.containedElements || [])
+        )
+          changes.containedElements = updatedElement.containedElements;
+        if (originalElement.width !== updatedElement.width)
+          changes.width = updatedElement.width;
+        if (originalElement.height !== updatedElement.height)
+          changes.height = updatedElement.height;
+
+        if (Object.keys(changes).length > 0) {
+          trackElementUpdate(
+            updatedElement.id,
+            originalElement.className || "Elemento",
+            changes
+          );
+        }
+      }
+
+      // El grafo se recrea automáticamente cuando cambian los dynamicElements
+    },
+    [dynamicElements, trackElementUpdate]
+  );
 
   const handleUpdateRelationship = useCallback(
     (updatedRelationship: UMLRelationship) => {
+      // Encontrar la relación original para comparar cambios
+      const originalRelationship = dynamicLinks.find(
+        (rel) => rel.id === updatedRelationship.id
+      );
+
       // Actualizar en relaciones dinámicas
       setDynamicLinks((prev) =>
         prev.map((rel) =>
@@ -213,10 +348,25 @@ function App() {
       );
       // Actualizar relación seleccionada
       setSelectedElement(updatedRelationship);
+
+      // Trackear la operación si hay cambios
+      if (originalRelationship) {
+        const changes: Partial<UMLRelationship> = {};
+        if (
+          originalRelationship.relationship !== updatedRelationship.relationship
+        ) {
+          changes.relationship = updatedRelationship.relationship;
+        }
+
+        if (Object.keys(changes).length > 0) {
+          trackRelationshipUpdate(updatedRelationship.id, changes);
+        }
+      }
+
       // No forzar recreación del grafo para relaciones - actualizar directamente
       // setUpdateCounter((prev) => prev + 1);
     },
-    []
+    [dynamicLinks, trackRelationshipUpdate]
   );
 
   const handleDeleteElement = useCallback(
@@ -225,6 +375,12 @@ function App() {
         // Es un CustomElement - eliminar de elementos dinámicos
         setDynamicElements((prev) =>
           prev.filter((el) => el.id !== elementToDelete.id)
+        );
+
+        // Trackear la eliminación del elemento
+        trackElementRemove(
+          elementToDelete.id,
+          elementToDelete.className || "Elemento"
         );
 
         // Si el elemento tenía un paquete padre, removerlo de la lista de contenidos
@@ -247,15 +403,21 @@ function App() {
         setDynamicLinks((prev) =>
           prev.filter((rel) => rel.id !== elementToDelete.id)
         );
+
+        // Trackear la eliminación de la relación
+        trackRelationshipRemove(elementToDelete.id);
       }
       // Deseleccionar el elemento eliminado
       setSelectedElement(null);
     },
-    []
+    [trackElementRemove, trackRelationshipRemove]
   );
 
   const handleAssignToPackage = useCallback(
     (elementId: string, packageId: string | null) => {
+      // Encontrar el elemento original antes del cambio
+      const originalElement = dynamicElements.find((el) => el.id === elementId);
+
       setDynamicElements((prev) =>
         prev.map((el) => {
           if (el.id === elementId) {
@@ -289,8 +451,20 @@ function App() {
           return el;
         })
       );
+
+      // Trackear el cambio de paquete del elemento
+      if (originalElement) {
+        const newPackageId = packageId || undefined;
+        if (originalElement.parentPackageId !== newPackageId) {
+          trackElementUpdate(
+            elementId,
+            originalElement.className || "Elemento",
+            { parentPackageId: newPackageId }
+          );
+        }
+      }
     },
-    []
+    [dynamicElements, trackElementUpdate]
   );
 
   const handleSelectRelationship = useCallback(
@@ -367,7 +541,7 @@ function App() {
 
   return (
     <div className="app-container">
-      <Header />
+      <Header operations={operations} />
 
       <div
         style={{

@@ -19,41 +19,18 @@ interface JsonPatchOperation {
 
 interface ConnectionStatusBarProps {
   className?: string;
+  operations?: JsonPatchOperation[];
 }
 
 const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
   className = "",
+  operations = [],
 }) => {
   const [isConnected, setIsConnected] = useState(false);
   const [users, setUsers] = useState<User[]>([]);
   const [totalUsers, setTotalUsers] = useState(0);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [showDiagramInfo, setShowDiagramInfo] = useState(false);
-  const [jsonPatchOperations, setJsonPatchOperations] = useState<
-    JsonPatchOperation[]
-  >([
-    {
-      op: "add",
-      path: "/classes/-",
-      value: { id: "class_1", name: "User" },
-      timestamp: new Date(Date.now() - 300000), // 5 minutos atrás
-      description: "Clase User creada",
-    },
-    {
-      op: "add",
-      path: "/classes/-",
-      value: { id: "class_2", name: "Admin" },
-      timestamp: new Date(Date.now() - 240000), // 4 minutos atrás
-      description: "Clase Admin creada",
-    },
-    {
-      op: "add",
-      path: "/relationships/-",
-      value: { type: "inheritance", from: "class_2", to: "class_1" },
-      timestamp: new Date(Date.now() - 180000), // 3 minutos atrás
-      description: "Relación de herencia creada entre Admin y User",
-    },
-  ]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -73,6 +50,23 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
 
     return () => {
       document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDiagramInfo]);
+
+  // Manejar la tecla ESC para cerrar el dropdown
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && showDiagramInfo) {
+        setShowDiagramInfo(false);
+      }
+    };
+
+    if (showDiagramInfo) {
+      document.addEventListener("keydown", handleKeyDown);
+    }
+
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
     };
   }, [showDiagramInfo]);
 
@@ -104,16 +98,6 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
       }) => {
         setUsers(data.connectedUsers);
         setTotalUsers(data.totalUsers);
-
-        // Agregar operación JSON Patch simulada
-        const operation: JsonPatchOperation = {
-          op: "add",
-          path: "/users/-",
-          value: { id: data.userId, name: data.userName },
-          timestamp: new Date(),
-          description: `Usuario ${data.userName} se conectó`,
-        };
-        setJsonPatchOperations((prev) => [operation, ...prev.slice(0, 9)]); // Mantener solo las últimas 10
       }
     );
 
@@ -127,15 +111,6 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
       }) => {
         setUsers(data.connectedUsers);
         setTotalUsers(data.totalUsers);
-
-        // Agregar operación JSON Patch simulada
-        const operation: JsonPatchOperation = {
-          op: "remove",
-          path: `/users/${data.userId}`,
-          timestamp: new Date(),
-          description: `Usuario ${data.userName} se desconectó`,
-        };
-        setJsonPatchOperations((prev) => [operation, ...prev.slice(0, 9)]); // Mantener solo las últimas 10
       }
     );
 
@@ -167,7 +142,7 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
       <div className={`connection-status-bar ${className}`}>
         <button
           className="diagram-info-btn"
-          onClick={() => setShowDiagramInfo(true)}
+          onClick={() => setShowDiagramInfo(!showDiagramInfo)}
           title="Ver cómo se ensambla el diagrama"
         >
           📋
@@ -231,12 +206,12 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
           <div className="dropdown-header">
             <h4>� Operaciones en Tiempo Real</h4>
             <span className="operations-count">
-              {jsonPatchOperations.length} operaciones
+              {operations.length} operaciones
             </span>
           </div>
 
           <div className="operations-list">
-            {jsonPatchOperations.length === 0 ? (
+            {operations.length === 0 ? (
               <div className="no-operations">
                 <span>📝</span>
                 <p>No hay operaciones recientes</p>
@@ -245,7 +220,7 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
                 </small>
               </div>
             ) : (
-              jsonPatchOperations.map((operation, index) => (
+              operations.map((operation, index) => (
                 <div
                   key={`${operation.timestamp.getTime()}-${index}`}
                   className="operation-item"
@@ -268,9 +243,11 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
                           {
                             op: operation.op,
                             path: operation.path,
+                            timestamp: operation.timestamp.toISOString(),
                             ...(operation.value
                               ? { value: operation.value }
                               : {}),
+                            ...(operation.from ? { from: operation.from } : {}),
                           },
                           null,
                           0
