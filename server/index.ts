@@ -104,6 +104,21 @@ io.on("connection", (socket) => {
     console.log(`📊 Total de conexiones: ${connectedUsers.size}`);
   });
 
+  // Manejar operaciones del diagrama
+  socket.on("diagram_operation", (operation: {
+    type: string;
+    elementId?: string;
+    data: Record<string, unknown>;
+    timestamp: number;
+    userId: string;
+    userName: string;
+  }) => {
+    console.log(`📝 Operación del diagrama: ${operation.type} por ${operation.userName}`);
+
+    // Broadcast la operación a todos los demás clientes conectados
+    socket.broadcast.emit("diagram_operation", operation);
+  });
+
   // Manejar mensajes de prueba (opcional)
   socket.on("ping", (data) => {
     socket.emit("pong", { ...data, serverTime: new Date() });
