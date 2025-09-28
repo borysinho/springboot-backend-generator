@@ -1,7 +1,8 @@
 .connection-status-bar {
   position: fixed;
-  top: 10px;
+  top: 50%;
   right: 10px;
+  transform: translateY(-50%);
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #ddd;
   border-radius: 20px;
