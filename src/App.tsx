@@ -15,6 +15,7 @@ import { convertRelationshipToLink } from "./utils/relationshipUtils";
 import { Toolbar } from "./components/Toolbar";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { UMLDiagram } from "./components/UMLDiagram";
+import Header from "./components/Header";
 
 const initialElements = createElements([
   // Diagrama vacío - sin elementos de ejemplo
@@ -365,93 +366,98 @@ function App() {
     .join("-")}`;
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        display: "flex",
-        gap: "10px",
-        alignItems: "stretch",
-        padding: "5px",
-        boxSizing: "border-box",
-      }}
-    >
-      <Toolbar onDragStart={handleDragStart} />
+    <div className="app-container">
+      <Header />
 
       <div
         style={{
-          flex: 1,
+          height: "calc(100vh - 70px)",
           display: "flex",
-          flexDirection: "column",
-          minHeight: 0,
+          gap: "10px",
+          alignItems: "stretch",
+          padding: "5px",
+          boxSizing: "border-box",
+          marginTop: "70px",
         }}
       >
-        {relationshipMode && (
-          <div
-            style={{
-              backgroundColor: "#FFF3CD",
-              border: "1px solid #FFEAA7",
-              borderRadius: "4px",
-              padding: "8px 12px",
-              marginBottom: "5px",
-              color: "#856404",
-              fontSize: "14px",
-              flexShrink: 0,
-            }}
-          >
-            <strong>Modo Relación:</strong> Creando {relationshipMode}.
-            {firstSelectedElement
-              ? ` Origen: "${firstSelectedElement.className}". Selecciona destino.`
-              : " Selecciona el primer elemento."}
-            <button
-              onClick={() => {
-                setRelationshipMode(null);
-                setFirstSelectedElement(null);
-              }}
+        <Toolbar onDragStart={handleDragStart} />
+
+        <div
+          style={{
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            minHeight: 0,
+          }}
+        >
+          {relationshipMode && (
+            <div
               style={{
-                marginLeft: "10px",
-                backgroundColor: "#6C757D",
-                color: "white",
-                border: "none",
-                borderRadius: "3px",
-                padding: "2px 6px",
-                cursor: "pointer",
-                fontSize: "12px",
+                backgroundColor: "#FFF3CD",
+                border: "1px solid #FFEAA7",
+                borderRadius: "4px",
+                padding: "8px 12px",
+                marginBottom: "5px",
+                color: "#856404",
+                fontSize: "14px",
+                flexShrink: 0,
               }}
             >
-              ✕
-            </button>
-          </div>
-        )}
-
-        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-          <div style={{ flex: 1, position: "relative" }}>
-            <GraphProvider
-              key={graphKey}
-              initialElements={allElements}
-              initialLinks={allLinks}
-            >
-              <UMLDiagram
-                onAddElement={handleAddElement}
-                selectedElement={selectedElement}
-                onSelectElement={handleSelectElement}
-                onUpdateElementPosition={handleUpdateElementPosition}
-                onSelectRelationship={handleSelectRelationship}
-                dynamicLinks={dynamicLinks}
-              />
-            </GraphProvider>
-          </div>
-
-          {selectedElement && (
-            <PropertiesPanel
-              selectedElement={selectedElement}
-              onUpdateElement={handleUpdateElement}
-              onUpdateRelationship={handleUpdateRelationship}
-              onDeleteElement={handleDeleteElement}
-              onAssignToPackage={handleAssignToPackage}
-              allElements={[...initialElements, ...dynamicElements]}
-              onClose={handleDeselectElement}
-            />
+              <strong>Modo Relación:</strong> Creando {relationshipMode}.
+              {firstSelectedElement
+                ? ` Origen: "${firstSelectedElement.className}". Selecciona destino.`
+                : " Selecciona el primer elemento."}
+              <button
+                onClick={() => {
+                  setRelationshipMode(null);
+                  setFirstSelectedElement(null);
+                }}
+                style={{
+                  marginLeft: "10px",
+                  backgroundColor: "#6C757D",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "3px",
+                  padding: "2px 6px",
+                  cursor: "pointer",
+                  fontSize: "12px",
+                }}
+              >
+                ✕
+              </button>
+            </div>
           )}
+
+          <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+            <div style={{ flex: 1, position: "relative" }}>
+              <GraphProvider
+                key={graphKey}
+                initialElements={allElements}
+                initialLinks={allLinks}
+              >
+                <UMLDiagram
+                  onAddElement={handleAddElement}
+                  selectedElement={selectedElement}
+                  onSelectElement={handleSelectElement}
+                  onUpdateElementPosition={handleUpdateElementPosition}
+                  onSelectRelationship={handleSelectRelationship}
+                  dynamicLinks={dynamicLinks}
+                />
+              </GraphProvider>
+            </div>
+
+            {selectedElement && (
+              <PropertiesPanel
+                selectedElement={selectedElement}
+                onUpdateElement={handleUpdateElement}
+                onUpdateRelationship={handleUpdateRelationship}
+                onDeleteElement={handleDeleteElement}
+                onAssignToPackage={handleAssignToPackage}
+                allElements={[...initialElements, ...dynamicElements]}
+                onClose={handleDeselectElement}
+              />
+            )}
+          </div>
         </div>
       </div>
     </div>

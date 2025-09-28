@@ -41,3 +41,8 @@
 .read-the-docs {
   color: #888;
 }
+
+.app-container {
+  height: 100vh;
+  overflow: hidden;
+}
