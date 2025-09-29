@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from "react";
+import React from "react";
 import type { CustomElement } from "../types";
 
 interface UMLClassProps {
@@ -12,55 +12,6 @@ export const UMLClass: React.FC<UMLClassProps> = ({
   isSelected = false,
   onSelect,
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
-  const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    mouseDownPos.current = { x: e.clientX, y: e.clientY };
-    setIsDragging(false);
-  }, []);
-
-  const handleMouseUp = useCallback(
-    (e: React.MouseEvent) => {
-      if (mouseDownPos.current) {
-        const deltaX = Math.abs(e.clientX - mouseDownPos.current.x);
-        const deltaY = Math.abs(e.clientY - mouseDownPos.current.y);
-
-        // Si el movimiento es menor a 5px, considerarlo como un click
-        if (deltaX < 5 && deltaY < 5 && !isDragging) {
-          onSelect?.(element);
-        }
-      }
-    },
-    [element, isDragging, onSelect]
-  );
-
-  // Detectar si se está arrastrando
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (mouseDownPos.current) {
-        const deltaX = Math.abs(e.clientX - mouseDownPos.current.x);
-        const deltaY = Math.abs(e.clientY - mouseDownPos.current.y);
-
-        if (deltaX > 5 || deltaY > 5) {
-          setIsDragging(true);
-        }
-      }
-    };
-
-    const handleMouseUpGlobal = () => {
-      mouseDownPos.current = null;
-      setIsDragging(false);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUpGlobal);
-
-    return () => {
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUpGlobal);
-    };
-  }, []);
   // Determinar el tipo de elemento basado en su contenido
   const getElementType = () => {
     // Usar el tipo fijo del elemento en lugar de determinar dinámicamente
@@ -130,11 +81,11 @@ export const UMLClass: React.FC<UMLClassProps> = ({
           ? "0 0 0 3px #007bff, 2px 2px 5px rgba(0,0,0,0.1)"
           : "2px 2px 5px rgba(0,0,0,0.1)",
         minWidth: "150px",
-        cursor: onSelect ? "pointer" : "default",
+        cursor: "inherit", // Heredar cursor del elemento padre (JointJS)
+        userSelect: "none", // Evitar selección de texto
         transition: "box-shadow 0.2s",
       }}
-      onMouseDown={handleMouseDown}
-      onMouseUp={handleMouseUp}
+      onClick={() => onSelect?.(element)}
     >
       {/* Nombre del elemento */}
       <div

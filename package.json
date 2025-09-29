@@ -14,6 +14,7 @@
     "start": "concurrently \"npm run server\" \"npm run preview\""
   },
   "dependencies": {
+    "@joint/core": "^4.2.0-alpha.0",
     "@joint/react": "^1.0.0-alpha.5",
     "cors": "^2.8.5",
     "express": "^4.18.2",

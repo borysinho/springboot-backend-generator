@@ -46,3 +46,23 @@
   height: 100vh;
   overflow: hidden;
 }
+
+.app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.app-content {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  padding-top: 70px; /* Compensar el header fijo */
+}
+
+.diagram-container {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+}
