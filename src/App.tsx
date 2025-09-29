@@ -38,7 +38,9 @@ function App() {
     });
 
     socketInstance.on("connect", () => {
-      console.log("📡 Conectado al servidor para envío de operaciones JSON Patch");
+      console.log(
+        "📡 Conectado al servidor para envío de operaciones JSON Patch"
+      );
     });
 
     socketInstance.on("disconnect", () => {
@@ -545,13 +547,13 @@ function App() {
 
       <div
         style={{
-          height: "calc(100vh - 70px)",
+          height: "calc(100vh - 35px)",
           display: "flex",
           gap: "10px",
           alignItems: "stretch",
           padding: "5px",
+          paddingTop: "75px",
           boxSizing: "border-box",
-          marginTop: "70px",
         }}
       >
         <Toolbar onDragStart={handleDragStart} />

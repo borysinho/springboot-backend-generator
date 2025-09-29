@@ -230,7 +230,7 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
   return (
     <div
       style={{
-        height: "600px",
+        height: "100%",
         border: "2px dashed #ccc",
         background: "#f9f9f9",
         position: "relative",
