@@ -1,97 +1,8 @@
-import React, { useCallback, useEffect } from "react";
-import { Paper, useGraph, usePaper } from "@joint/react";
-import { UMLClass } from "./UMLClass";
+import React, { useCallback, useEffect, useRef } from "react";
+import { useGraph } from "@joint/react";
+import { dia, shapes } from "@joint/core";
 import type { CustomElement, UMLRelationship } from "../types";
-import {
-  classTemplates,
-  validateElementPosition,
-} from "../constants/templates";
-
-// Componente que maneja el drop y usa usePaper para obtener el paper
-const DropZoneWithPaper: React.FC<{
-  onAddElement: (
-    template: keyof typeof classTemplates,
-    x?: number,
-    y?: number,
-    containerWidth?: number,
-    containerHeight?: number
-  ) => void;
-}> = ({ onAddElement }) => {
-  const paper = usePaper();
-
-  console.log("DropZoneWithPaper renderizado, paper disponible:", !!paper);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      console.log("Drop event triggered!");
-      const template = e.dataTransfer.getData(
-        "text/plain"
-      ) as keyof typeof classTemplates;
-
-      console.log("Drop event on diagram:", template, classTemplates[template]);
-
-      if (template && paper) {
-        // Usar clientToLocalPoint para conversión correcta de coordenadas
-        const localPoint = paper.clientToLocalPoint({
-          x: e.clientX,
-          y: e.clientY,
-        });
-
-        console.log("Coordenadas convertidas:", localPoint.x, localPoint.y);
-
-        // Obtener dimensiones del contenedor para validación
-        const rect = e.currentTarget.getBoundingClientRect();
-        const containerWidth = rect.width;
-        const containerHeight = rect.height;
-
-        console.log(
-          "Llamando onAddElement con coordenadas:",
-          localPoint.x,
-          localPoint.y
-        );
-        onAddElement(
-          template,
-          localPoint.x,
-          localPoint.y,
-          containerWidth,
-          containerHeight
-        );
-      } else {
-        console.log(
-          "No se puede procesar drop: template =",
-          template,
-          "paper disponible =",
-          !!paper
-        );
-      }
-    },
-    [onAddElement, paper]
-  );
-
-  const handleDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    console.log("Drag over event triggered!");
-    e.dataTransfer.dropEffect = "copy";
-  }, []);
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        zIndex: 10,
-      }}
-      onDrop={handleDrop}
-      onDragOver={handleDragOver}
-    >
-      {/* Área invisible para capturar drops */}
-    </div>
-  );
-};
+import { classTemplates } from "../constants/templates";
 
 interface UMLDiagramProps {
   onAddElement: (
@@ -118,242 +29,260 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
   dynamicLinks,
   elementMap,
 }) => {
-  // Hook para acceder al grafo de JointJS
   const graph = useGraph();
+  const paperRef = useRef<HTMLDivElement>(null);
+  const paperInstanceRef = useRef<unknown>(null);
 
-  // Función para renderizar elementos (requerida por Paper)
-  const renderElement = useCallback(() => null, []);
+  // Inicializar Paper manualmente
+  useEffect(() => {
+    if (!graph || !paperRef.current) {
+      console.log("Graph o paperRef no disponible");
+      return;
+    }
 
-  // Escuchar cambios de posición de elementos
+    console.log("Inicializando Paper manualmente en UMLDiagram...");
+
+    // Verificar el contenedor
+    console.log("Contenedor del Paper:", paperRef.current);
+    console.log(
+      "Dimensiones del contenedor:",
+      paperRef.current?.getBoundingClientRect()
+    );
+
+    // Crear Paper usando JointJS puro
+    const paper = new dia.Paper({
+      el: paperRef.current,
+      model: graph,
+      width: "100%",
+      height: "100%",
+      gridSize: 10,
+      drawGrid: { name: "mesh", args: { color: "#ddd", thickness: 1 } },
+      interactive: true,
+      cellViewNamespace: shapes,
+    });
+
+    paperInstanceRef.current = paper;
+    console.log("Paper creado en UMLDiagram:", paper);
+    console.log("Elemento del Paper:", paper.el);
+    console.log("SVG del Paper:", paper.svg);
+
+    // Verificar que el Paper se agregó al DOM
+    setTimeout(() => {
+      console.log("Verificación post-creación en UMLDiagram:");
+      console.log("Paper en DOM:", document.contains(paper.el));
+      console.log("SVG en DOM:", document.contains(paper.svg));
+      console.log("Celdas en grafo:", graph.getCells().length);
+    }, 100);
+
+    return () => {
+      console.log("Limpiando Paper en UMLDiagram...");
+      if (paperInstanceRef.current) {
+        (paperInstanceRef.current as { remove: () => void }).remove();
+        paperInstanceRef.current = null;
+      }
+    };
+  }, [graph]);
+
+  // Actualizar apariencia de elementos existentes cuando cambie elementMap
   useEffect(() => {
     if (!graph) return;
 
-    const handleElementMove = (element: {
-      id: string;
-      position: () => { x: number; y: number };
-      set: (key: string, value: { x: number; y: number }) => void;
-    }) => {
-      const position = element.position();
-      let { x, y } = position;
-      const elementId = element.id;
+    console.log("Actualizando apariencia de elementos en UMLDiagram");
 
-      // Los elementos JointJS están en la misma posición exacta que los elementos React
-      // No se necesita conversión de coordenadas
+    elementMap.forEach((element: CustomElement) => {
+      const cell = graph.getCell(element.id);
+      if (cell) {
+        console.log(
+          "Actualizando apariencia de elemento:",
+          element.id,
+          element.className
+        );
 
-      // Validar límites para evitar que los elementos se salgan del área visible
-      // Obtener dimensiones del contenedor del diagrama
-      const diagramElement = document.querySelector(
-        "[data-diagram]"
-      ) as HTMLElement;
-      if (diagramElement) {
-        const containerWidth = diagramElement.offsetWidth;
-        const containerHeight = diagramElement.offsetHeight;
+        // Crear el contenido completo de la clase UML
+        const headerText = element.stereotype
+          ? `${element.stereotype}\n${element.className}`
+          : element.className;
 
-        const validatedPosition = validateElementPosition(
+        const attributesText =
+          element.attributes?.length > 0 ? element.attributes.join("\n") : "";
+
+        const methodsText =
+          element.methods?.length > 0 ? element.methods.join("\n") : "";
+
+        // Calcular alturas dinámicas basadas en el contenido
+        const headerLines = headerText.split("\n").length;
+        const attributesLines = attributesText
+          ? attributesText.split("\n").length
+          : 0;
+        const methodsLines = methodsText ? methodsText.split("\n").length : 0;
+
+        const headerHeight = headerLines * 20 + 16; // 20px por línea + padding
+        const attributesHeight =
+          attributesLines > 0 ? attributesLines * 18 + 8 : 0;
+        const methodsHeight = methodsLines > 0 ? methodsLines * 18 + 8 : 0;
+
+        const totalHeight = Math.max(
+          headerHeight + attributesHeight + methodsHeight,
+          80
+        );
+
+        // Actualizar tamaño del elemento
+        cell.set("size", { width: element.width, height: totalHeight });
+
+        // Configurar markup personalizado para estructura UML
+        cell.set("markup", [
+          {
+            tagName: "rect",
+            selector: "body",
+          },
+          {
+            tagName: "text",
+            selector: "headerLabel",
+          },
+          {
+            tagName: "line",
+            selector: "headerLine",
+          },
+          ...(attributesText ? [
+            {
+              tagName: "text",
+              selector: "attributesLabel",
+            }
+          ] : []),
+          ...(attributesText && methodsText ? [
+            {
+              tagName: "line",
+              selector: "attributesLine",
+            }
+          ] : []),
+          ...(methodsText ? [
+            {
+              tagName: "text",
+              selector: "methodsLabel",
+            }
+          ] : []),
+        ]);
+
+        // Configurar atributos para mostrar estructura UML completa
+        cell.attr({
+          body: {
+            fill: "#ffffff",
+            stroke: "#000000",
+            strokeWidth: 2,
+            rx: 8,
+            ry: 8,
+            width: element.width,
+            height: totalHeight,
+          },
+          headerLabel: {
+            text: headerText,
+            fill: "#000000",
+            fontSize: 14,
+            fontWeight: "bold",
+            x: element.width / 2,
+            y: 20,
+            textAnchor: "middle",
+          },
+          headerLine: {
+            x1: 0,
+            y1: headerHeight,
+            x2: element.width,
+            y2: headerHeight,
+            stroke: "#000000",
+            strokeWidth: 1,
+          },
+        });
+
+        // Atributos (si existen)
+        if (attributesText) {
+          cell.attr("attributesLabel", {
+            text: attributesText,
+            fill: "#000000",
+            fontSize: 12,
+            x: 8,
+            y: headerHeight + 20,
+            textAnchor: "start",
+          });
+
+          // Línea separadora entre atributos y métodos
+          if (methodsText) {
+            const attributesBottom = headerHeight + attributesHeight;
+            cell.attr("attributesLine", {
+              x1: 0,
+              y1: attributesBottom,
+              x2: element.width,
+              y2: attributesBottom,
+              stroke: "#000000",
+              strokeWidth: 1,
+            });
+          }
+        }
+
+        // Métodos (si existen)
+        if (methodsText) {
+          const methodsY = headerHeight + attributesHeight + 20;
+          cell.attr("methodsLabel", {
+            text: methodsText,
+            fill: "#000000",
+            fontSize: 12,
+            x: 8,
+            y: methodsY,
+            textAnchor: "start",
+          });
+        }
+      }
+    });
+  }, [graph, elementMap]);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const template = e.dataTransfer.getData(
+        "text/plain"
+      ) as keyof typeof classTemplates;
+
+      console.log("Drop event on diagram:", template, classTemplates[template]);
+
+      if (template) {
+        // Calcular la posición relativa al diagrama
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+
+        // Obtener dimensiones del contenedor
+        const containerWidth = rect.width;
+        const containerHeight = rect.height;
+
+        console.log(
+          "Drop position:",
           x,
           y,
+          "Container size:",
           containerWidth,
           containerHeight
         );
-
-        // Si la posición cambió, actualizarla en el grafo (sin conversión ya que coinciden exactamente)
-        if (validatedPosition.x !== x || validatedPosition.y !== y) {
-          element.set("position", validatedPosition);
-          x = validatedPosition.x;
-          y = validatedPosition.y;
-        }
+        onAddElement(template, x, y, containerWidth, containerHeight);
       }
-
-      // Actualizar la posición en el estado de la aplicación
-      onUpdateElementPosition(elementId, x, y);
-    };
-
-    // Escuchar el evento 'change:position' en todos los elementos
-    graph.on("change:position", handleElementMove);
-
-    // Cleanup
-    return () => {
-      graph.off("change:position", handleElementMove);
-    };
-  }, [graph, onUpdateElementPosition]);
-
-  // Agregar event listeners directamente a los elementos DOM de los links
-  useEffect(() => {
-    const handleLinkElementClick = (event: Event) => {
-      const target = event.target as HTMLElement;
-      console.log("Link element clicked:", target);
-
-      // Buscar el elemento padre que tenga el model-id
-      const linkElement = target.closest("[model-id]") as HTMLElement;
-      if (linkElement) {
-        const linkId = linkElement.getAttribute("model-id");
-        console.log("Found link ID from DOM:", linkId);
-        if (linkId) {
-          const relationship = dynamicLinks.find(
-            (rel: UMLRelationship) => rel.id === linkId
-          );
-          console.log("Found relationship:", relationship);
-          if (relationship) {
-            onSelectRelationship(relationship);
-          }
-        }
-      }
-    };
-
-    // Función para agregar listeners a los links existentes
-    const addListenersToLinks = () => {
-      // Buscar todos los elementos de link en el DOM
-      const linkElements = document.querySelectorAll("[model-id]");
-      console.log("Found link elements in DOM:", linkElements.length);
-
-      linkElements.forEach((element) => {
-        const modelId = element.getAttribute("model-id");
-        // Verificar si es un link (no un elemento)
-        const isLink = dynamicLinks.some((link) => link.id === modelId);
-        if (isLink && !element.hasAttribute("data-link-listener")) {
-          console.log("Adding click listener to link element:", modelId);
-          element.addEventListener("click", handleLinkElementClick);
-          element.setAttribute("data-link-listener", "true");
-        }
-      });
-    };
-
-    // Agregar listeners inicialmente
-    setTimeout(addListenersToLinks, 100);
-
-    // Observer para detectar cuando se agregan nuevos links al DOM
-    const observer = new MutationObserver((mutations) => {
-      let shouldAddListeners = false;
-      mutations.forEach((mutation) => {
-        if (mutation.type === "childList") {
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeType === Node.ELEMENT_NODE) {
-              const element = node as Element;
-              if (
-                element.hasAttribute("model-id") ||
-                element.querySelector("[model-id]")
-              ) {
-                shouldAddListeners = true;
-              }
-            }
-          });
-        }
-      });
-      if (shouldAddListeners) {
-        setTimeout(addListenersToLinks, 50);
-      }
-    });
-
-    // Observar cambios en el DOM
-    const diagramElement = document.querySelector("[data-diagram]");
-    if (diagramElement) {
-      observer.observe(diagramElement, {
-        childList: true,
-        subtree: true,
-      });
-    }
-
-    return () => {
-      observer.disconnect();
-      // Remover listeners de todos los elementos
-      const linkElements = document.querySelectorAll("[data-link-listener]");
-      linkElements.forEach((element) => {
-        element.removeEventListener("click", handleLinkElementClick);
-        element.removeAttribute("data-link-listener");
-      });
-    };
-  }, [dynamicLinks, onSelectRelationship]);
+    },
+    [onAddElement]
+  );
 
   return (
     <div
+      ref={paperRef}
       style={{
+        width: "100%",
         height: "100%",
-        border: "2px dashed #ccc",
-        background: "#f9f9f9",
-        position: "relative",
-        borderRadius: "8px",
-        overflow: "hidden",
+        border: "1px solid #ccc",
+        borderRadius: "4px",
       }}
-      data-diagram
-    >
-      <div
-        style={{
-          position: "absolute",
-          top: "10px",
-          left: "10px",
-          background: "rgba(255, 255, 255, 0.9)",
-          padding: "5px 10px",
-          borderRadius: "4px",
-          fontSize: "12px",
-          color: "#666",
-          pointerEvents: "none",
-          zIndex: 10,
-        }}
-      >
-        {/* Arrastra elementos desde la barra lateral para agregarlos */}
-      </div>
-      <Paper
-        width="100%"
-        height="100%"
-        renderElement={renderElement}
-        useHTMLOverlay
-        interactive
-      >
-        <DropZoneWithPaper onAddElement={onAddElement} />
-      </Paper>
-
-      {/* Renderizar elementos UML absolutamente posicionados */}
-      {Array.from(elementMap.entries()).map(([id, element]) => {
-        console.log(
-          "Renderizando elemento:",
-          id,
-          element.className,
-          "en posición:",
-          element.x,
-          element.y
-        );
-
-        // Obtener la posición actual del elemento JointJS si existe
-        let currentX = element.x;
-        let currentY = element.y;
-
-        if (graph) {
-          const jointElement = graph.getCell(id);
-          if (jointElement) {
-            const jointPosition = jointElement.position();
-            currentX = jointPosition.x;
-            currentY = jointPosition.y;
-            console.log("Posición actual del JointJS:", currentX, currentY);
-          } else {
-            console.log("No se encontró elemento JointJS para:", id);
-          }
-        }
-
-        return (
-          <div
-            key={id}
-            style={{
-              position: "absolute",
-              left: currentX,
-              top: currentY,
-              zIndex: 5,
-              border: "2px solid red", // Debug border
-            }}
-          >
-            <UMLClass
-              element={element}
-              isSelected={
-                !!(
-                  selectedElement &&
-                  "className" in selectedElement &&
-                  selectedElement?.id === element.id
-                )
-              }
-              onSelect={onSelectElement}
-            />
-          </div>
-        );
-      })}
-    </div>
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
+    />
   );
 };
