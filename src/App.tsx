@@ -1,4 +1,10 @@
-import React, { useCallback, useState, useEffect, useRef } from "react";
+import React, {
+  useCallback,
+  useState,
+  useEffect,
+  useRef,
+  useMemo,
+} from "react";
 import { GraphProvider, createElements } from "@joint/react";
 import { io, Socket } from "socket.io-client";
 import "./App.css";
@@ -508,7 +514,35 @@ function App() {
   }, [selectedElement, handleDeselectElement]); // Dependencia en selectedElement y handleDeselectElement
 
   // Combinar elementos iniciales con dinámicos
-  const allElements = [...initialElements, ...dynamicElements];
+  const allElements = useMemo(
+    () => [...initialElements, ...dynamicElements],
+    [dynamicElements]
+  );
+
+  // Crear elementos JointJS vacíos para que JointJS sepa de su existencia (solo para conexiones)
+  const jointElements = useMemo(
+    () =>
+      allElements.map((element: CustomElement) => ({
+        id: element.id,
+        type: "standard.Rectangle",
+        position: { x: element.x, y: element.y },
+        size: { width: element.width, height: element.height },
+        attrs: {
+          body: { fill: "transparent", stroke: "transparent", strokeWidth: 0 },
+          label: { text: "" },
+        },
+      })),
+    [allElements]
+  );
+
+  // Crear mapa de elementos por ID para acceso rápido
+  const elementMap = useMemo(() => {
+    const map = new Map<string, CustomElement>();
+    allElements.forEach((element) => {
+      map.set(element.id, element);
+    });
+    return map;
+  }, [allElements]);
 
   // Convertir relaciones dinámicas a links de JointJS con multiplicidad
   const convertedDynamicLinks = dynamicLinks.map(convertRelationshipToLink);
@@ -608,7 +642,7 @@ function App() {
             <div style={{ flex: 1, position: "relative" }}>
               <GraphProvider
                 key={graphKey}
-                initialElements={allElements}
+                initialElements={jointElements}
                 initialLinks={allLinks}
               >
                 <UMLDiagram
@@ -618,6 +652,7 @@ function App() {
                   onUpdateElementPosition={handleUpdateElementPosition}
                   onSelectRelationship={handleSelectRelationship}
                   dynamicLinks={dynamicLinks}
+                  elementMap={elementMap}
                 />
               </GraphProvider>
             </div>

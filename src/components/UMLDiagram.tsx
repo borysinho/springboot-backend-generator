@@ -20,6 +20,7 @@ interface UMLDiagramProps {
   onUpdateElementPosition: (elementId: string, x: number, y: number) => void;
   onSelectRelationship: (relationship: UMLRelationship) => void;
   dynamicLinks: UMLRelationship[];
+  elementMap: Map<string, CustomElement>;
 }
 
 export const UMLDiagram: React.FC<UMLDiagramProps> = ({
@@ -29,25 +30,10 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
   onUpdateElementPosition,
   onSelectRelationship,
   dynamicLinks,
+  elementMap,
 }) => {
-  const renderElement = useCallback(
-    (element: CustomElement) => {
-      return (
-        <UMLClass
-          element={element}
-          isSelected={
-            !!(
-              selectedElement &&
-              "className" in selectedElement &&
-              selectedElement?.id === element.id
-            )
-          }
-          onSelect={onSelectElement}
-        />
-      );
-    },
-    [selectedElement, onSelectElement]
-  );
+  // No necesitamos renderElement ya que renderizamos los elementos por separado
+  const renderElement = useCallback(() => null, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -264,6 +250,31 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
         useHTMLOverlay
         interactive
       />
+
+      {/* Renderizar elementos UML absolutamente posicionados */}
+      {Array.from(elementMap.entries()).map(([id, element]) => (
+        <div
+          key={id}
+          style={{
+            position: "absolute",
+            left: element.x,
+            top: element.y,
+            zIndex: 5,
+          }}
+        >
+          <UMLClass
+            element={element}
+            isSelected={
+              !!(
+                selectedElement &&
+                "className" in selectedElement &&
+                selectedElement?.id === element.id
+              )
+            }
+            onSelect={onSelectElement}
+          />
+        </div>
+      ))}
     </div>
   );
 };

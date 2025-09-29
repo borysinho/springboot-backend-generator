@@ -1,9 +1,33 @@
-import type { UMLRelationship } from "../types";
+import type { UMLRelationship, CustomElement } from "../types";
+
+// Función para convertir CustomElement a elemento de JointJS
+export const convertElementToJoint = (element: CustomElement) => {
+  return {
+    id: element.id,
+    type: "standard.Rectangle",
+    position: { x: element.x, y: element.y },
+    size: { width: element.width, height: element.height },
+    attrs: {
+      body: {
+        fill: "#E3F2FD",
+        stroke: "#1976D2",
+        strokeWidth: 2,
+      },
+      label: {
+        text: element.className,
+        fill: "#1976D2",
+        fontSize: 14,
+        fontWeight: "bold",
+      },
+    },
+  };
+};
 
 // Función para convertir UMLRelationship a link de JointJS con multiplicidad
 export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   const link = {
     id: relationship.id,
+    type: "standard.Link",
     source: { id: relationship.source },
     target: { id: relationship.target },
     labels: [] as Array<{
@@ -25,16 +49,28 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
         };
       };
     }>,
-    attrs: {} as Record<
-      string,
-      {
+    attrs: {
+      line: {} as {
         stroke?: string;
         strokeWidth?: number;
         fill?: string;
-        d?: string;
         strokeDasharray?: string;
-      }
-    >,
+        targetMarker?: {
+          type: string;
+          d: string;
+          fill: string;
+          stroke?: string;
+          strokeWidth?: number;
+        };
+        sourceMarker?: {
+          type: string;
+          d: string;
+          fill: string;
+          stroke?: string;
+          strokeWidth?: number;
+        };
+      },
+    },
   };
 
   // Agregar etiqueta de relación si existe
@@ -135,65 +171,77 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   // Configurar el estilo de la línea según el tipo de relación
   switch (relationship.relationship) {
     case "aggregation":
-      link.attrs = {
-        ".connection": { stroke: "#9C27B0", strokeWidth: 2 },
-        ".marker-target": {
-          fill: "#9C27B0",
+      link.attrs.line = {
+        stroke: "#9C27B0",
+        strokeWidth: 2,
+        sourceMarker: {
+          type: "path",
+          d: "M 15 0 L 7.5 -7.5 L 0 0 L 7.5 7.5 z",
+          fill: "white",
           stroke: "#9C27B0",
-          d: "M 10 0 L 0 5 L 10 10 z",
+          strokeWidth: 2,
         },
       };
       break;
     case "composition":
-      link.attrs = {
-        ".connection": { stroke: "#673AB7", strokeWidth: 2 },
-        ".marker-target": {
+      link.attrs.line = {
+        stroke: "#673AB7",
+        strokeWidth: 2,
+        sourceMarker: {
+          type: "path",
+          d: "M 15 0 L 7.5 -7.5 L 0 0 L 7.5 7.5 z",
           fill: "#673AB7",
-          stroke: "#673AB7",
-          d: "M 10 0 L 0 5 L 10 10 z",
         },
       };
       break;
     case "generalization":
-      link.attrs = {
-        ".connection": { stroke: "#3F51B5", strokeWidth: 2 },
-        ".marker-target": {
+      link.attrs.line = {
+        stroke: "#3F51B5",
+        strokeWidth: 2,
+        targetMarker: {
+          type: "path",
+          d: "M 10 0 L 0 5 L 10 10 z",
           fill: "white",
           stroke: "#3F51B5",
           strokeWidth: 2,
-          d: "M 10 0 L 0 5 L 10 10 z",
         },
       };
       break;
     case "dependency":
-      link.attrs = {
-        ".connection": {
-          stroke: "#607D8B",
-          strokeWidth: 1,
-          strokeDasharray: "5,5",
+      link.attrs.line = {
+        stroke: "#607D8B",
+        strokeWidth: 2,
+        strokeDasharray: "5,5",
+        targetMarker: {
+          type: "path",
+          d: "M 10 0 L 0 5 L 10 10 z",
+          fill: "#607D8B",
         },
-        ".marker-target": { fill: "#607D8B", d: "M 10 0 L 0 5 L 10 10 z" },
       };
       break;
     case "realization":
-      link.attrs = {
-        ".connection": {
-          stroke: "#00BCD4",
-          strokeWidth: 1,
-          strokeDasharray: "5,5",
-        },
-        ".marker-target": {
+      link.attrs.line = {
+        stroke: "#00BCD4",
+        strokeWidth: 2,
+        strokeDasharray: "5,5",
+        targetMarker: {
+          type: "path",
+          d: "M 10 0 L 0 5 L 10 10 z",
           fill: "white",
           stroke: "#00BCD4",
           strokeWidth: 2,
-          d: "M 10 0 L 0 5 L 10 10 z",
         },
       };
       break;
     default: // association
-      link.attrs = {
-        ".connection": { stroke: "#FF5722", strokeWidth: 2 },
-        ".marker-target": { fill: "#FF5722", d: "M 10 0 L 0 5 L 10 10 z" },
+      link.attrs.line = {
+        stroke: "#FF5722",
+        strokeWidth: 2,
+        targetMarker: {
+          type: "path",
+          d: "M 10 0 L 0 5 L 10 10 z",
+          fill: "#FF5722",
+        },
       };
   }
 

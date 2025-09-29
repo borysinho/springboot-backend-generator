@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import ConnectionStatusBar from "./ConnectionStatusBar";
 import "./Header.css";
 import type { JsonPatchOperation } from "../hooks/useDiagramSync";
@@ -23,6 +24,21 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="header-right">
+          <Link
+            to="/demo"
+            className="demo-link"
+            style={{
+              padding: "8px 16px",
+              backgroundColor: "#007bff",
+              color: "white",
+              textDecoration: "none",
+              borderRadius: "4px",
+              fontSize: "14px",
+              marginRight: "16px",
+            }}
+          >
+            Ver Demo Relaciones
+          </Link>
           <ConnectionStatusBar operations={operations} />
         </div>
       </div>

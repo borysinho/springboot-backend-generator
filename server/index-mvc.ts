@@ -1,8 +1,7 @@
 import { createServer } from "node:http";
 import { Server as SocketIOServer } from "socket.io";
 import express from "express";
-import { DiagramModel } from "./models/DiagramModel.ts";
-import { DiagramController } from "./controllers/DiagramController.ts";
+import { DiagramController } from "./controllers/DiagramController";
 
 const PORT = process.env.PORT || 3000;
 
@@ -22,40 +21,36 @@ const io = new SocketIOServer(server, {
 // Middleware para parsear JSON
 app.use(express.json());
 
-// Inicializar el modelo (persistencia en memoria)
-const diagramModel = new DiagramModel();
-
-// Inicializar el controlador
-const diagramController = new DiagramController(diagramModel, io);
+// Inicializar el controlador MVC simple
+const diagramController = new DiagramController(io);
 
 // Rutas HTTP para información del servidor
 app.get("/health", (req, res) => {
   res.json({
     status: "ok",
     timestamp: new Date().toISOString(),
-    connections: diagramController.getActiveConnections().length,
-    diagramVersion: diagramController.getModelState().version,
+    message: "Controlador MVC simple funcionando",
   });
 });
 
 app.get("/diagram", (req, res) => {
-  res.json(diagramController.getModelState());
+  res.json({
+    message: "Diagrama no implementado en controlador simple",
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.get("/connections", (req, res) => {
   res.json({
-    total: diagramController.getActiveConnections().length,
-    connections: diagramController.getActiveConnections(),
+    message: "Conexiones no rastreadas en controlador simple",
+    timestamp: new Date().toISOString(),
   });
 });
 
-// Ruta para reiniciar el diagrama (útil para desarrollo)
+// Ruta para reiniciar (placeholder)
 app.post("/reset", (req, res) => {
-  diagramModel.clear();
-  diagramController.clearConnections();
-
   res.json({
-    message: "Diagram reset successfully",
+    message: "Reset no implementado en controlador simple",
     timestamp: new Date().toISOString(),
   });
 });
@@ -73,7 +68,7 @@ server.listen(PORT, () => {
   console.log(`🔌 Socket.IO configurado para conexiones WebSocket`);
   console.log(`🌐 Frontend esperado en: http://localhost:5173`);
   console.log(
-    `📊 Modelo de diagrama inicializado con versión: ${diagramModel.getVersion()}`
+    `� Controlador MVC simple listo para recibir operaciones JSON Patch`
   );
 });
 
@@ -81,7 +76,6 @@ server.listen(PORT, () => {
 process.on("SIGINT", () => {
   console.log("\n🛑 Recibida señal SIGINT, cerrando servidor...");
 
-  diagramController.clearConnections();
   io.close();
   server.close(() => {
     console.log("✅ Servidor cerrado correctamente");
@@ -92,7 +86,6 @@ process.on("SIGINT", () => {
 process.on("SIGTERM", () => {
   console.log("\n🛑 Recibida señal SIGTERM, cerrando servidor...");
 
-  diagramController.clearConnections();
   io.close();
   server.close(() => {
     console.log("✅ Servidor cerrado correctamente");
@@ -100,4 +93,4 @@ process.on("SIGTERM", () => {
   });
 });
 
-export { app, server, io, diagramModel, diagramController };
+export { app, server, io, diagramController };
