@@ -6,9 +6,18 @@ interface ToolbarProps {
     e: React.DragEvent,
     template: keyof typeof classTemplates
   ) => void;
+  onClick?: (template: keyof typeof classTemplates) => void;
 }
 
-export const Toolbar: React.FC<ToolbarProps> = ({ onDragStart }) => {
+export const Toolbar: React.FC<ToolbarProps> = ({ onDragStart, onClick }) => {
+  const relationshipTypes = [
+    "association",
+    "aggregation",
+    "composition",
+    "generalization",
+    "dependency",
+    "realization",
+  ];
   return (
     <div
       style={{
@@ -57,45 +66,65 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onDragStart }) => {
             {group.title}
           </h4>
           <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            {group.items.map((item) => (
-              <div
-                key={item.key}
-                draggable
-                onDragStart={(e) =>
-                  onDragStart(e, item.key as keyof typeof classTemplates)
-                }
-                style={{
-                  padding: "6px 8px",
-                  background: item.color,
-                  color: "white",
-                  border: "none",
-                  borderRadius: "4px",
-                  cursor: "grab",
-                  fontSize: "11px",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  userSelect: "none",
-                  transition: "transform 0.2s, box-shadow 0.2s",
-                  boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                  fontWeight: "500",
-                  minHeight: "28px",
-                }}
-                onMouseDown={(e) => {
-                  (e.currentTarget as HTMLElement).style.transform =
-                    "scale(0.95)";
-                }}
-                onMouseUp={(e) => {
-                  (e.currentTarget as HTMLElement).style.transform = "scale(1)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.transform = "scale(1)";
-                }}
-                title={`Arrastrar para agregar ${item.label.toLowerCase()}`}
-              >
-                {item.label}
-              </div>
-            ))}
+            {group.items.map((item) => {
+              const isRelationship = relationshipTypes.includes(item.key);
+              return (
+                <div
+                  key={item.key}
+                  draggable={!isRelationship}
+                  onDragStart={
+                    !isRelationship
+                      ? (e) =>
+                          onDragStart(
+                            e,
+                            item.key as keyof typeof classTemplates
+                          )
+                      : undefined
+                  }
+                  onClick={
+                    isRelationship && onClick
+                      ? () => onClick(item.key as keyof typeof classTemplates)
+                      : undefined
+                  }
+                  style={{
+                    padding: "6px 8px",
+                    background: item.color,
+                    color: "white",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: isRelationship ? "pointer" : "grab",
+                    fontSize: "11px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    userSelect: "none",
+                    transition: "transform 0.2s, box-shadow 0.2s",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+                    fontWeight: "500",
+                    minHeight: "28px",
+                  }}
+                  onMouseDown={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform =
+                      "scale(0.95)";
+                  }}
+                  onMouseUp={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform =
+                      "scale(1)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.transform =
+                      "scale(1)";
+                  }}
+                  title={
+                    isRelationship
+                      ? `Haz click para crear ${item.label.toLowerCase()}`
+                      : `Arrastrar para agregar ${item.label.toLowerCase()}`
+                  }
+                >
+                  {item.label}
+                </div>
+              );
+            })}
           </div>
           {groupIndex < toolbarGroups.length - 1 && (
             <div

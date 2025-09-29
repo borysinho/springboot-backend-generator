@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useState,
-  useEffect,
-  useRef,
-  useMemo,
-} from "react";
+import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { GraphProvider, createElements } from "@joint/react";
 import { io, Socket } from "socket.io-client";
 import "./App.css";
@@ -36,6 +30,7 @@ function App() {
   const [dynamicElements, setDynamicElements] = useState<CustomElement[]>([]);
   const [elementCounter, setElementCounter] = useState(5);
   const [socket, setSocket] = useState<Socket | undefined>(undefined);
+  const [graphSessionId, setGraphSessionId] = useState(1);
 
   // Configurar conexión Socket.IO
   useEffect(() => {
@@ -47,6 +42,8 @@ function App() {
       console.log(
         "📡 Conectado al servidor para envío de operaciones JSON Patch"
       );
+      // Incrementar el session ID para estabilizar el graphKey después de la conexión inicial
+      setGraphSessionId((prev) => prev + 1);
     });
 
     socketInstance.on("disconnect", () => {
@@ -68,9 +65,6 @@ function App() {
   const [firstSelectedElement, setFirstSelectedElement] =
     useState<CustomElement | null>(null);
   const [dynamicLinks, setDynamicLinks] = useState<UMLRelationship[]>([]);
-
-  // Ref para manejar timeouts de debounce en movimientos de elementos
-  const moveTimeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Hook para sincronización y tracking de operaciones
   const {
@@ -201,82 +195,51 @@ function App() {
     [dynamicElements, elementCounter, trackElementAdd]
   );
 
-  const handleUpdateElementPosition = useCallback(
-    (elementId: string, x: number, y: number) => {
-      // Actualizar la posición del elemento en dynamicElements
-      setDynamicElements((prev) =>
-        prev.map((el) => (el.id === elementId ? { ...el, x, y } : el))
-      );
-
-      // Cancelar timeout anterior para este elemento si existe
-      const existingTimeout = moveTimeoutsRef.current.get(elementId);
-      if (existingTimeout) {
-        clearTimeout(existingTimeout);
-      }
-
-      // Crear nuevo timeout para registrar la operación después de 300ms sin movimientos
-      const timeout = setTimeout(() => {
-        const updatedElement = dynamicElements.find(
-          (el) => el.id === elementId
-        );
-        if (updatedElement) {
-          trackElementUpdate(
-            elementId,
-            updatedElement.className || "Elemento",
-            {
-              x,
-              y,
-            }
-          );
-        }
-        // Limpiar el timeout del mapa
-        moveTimeoutsRef.current.delete(elementId);
-      }, 300);
-
-      // Almacenar el nuevo timeout
-      moveTimeoutsRef.current.set(elementId, timeout);
-
-      console.log(`Element ${elementId} moved to:`, x, y);
-    },
-    [dynamicElements, trackElementUpdate]
-  );
-
   const handleSelectElement = useCallback(
-    (element: CustomElement) => {
-      if (relationshipMode) {
-        // Modo de relación activo
-        if (!firstSelectedElement) {
-          // Seleccionar primer elemento
-          setFirstSelectedElement(element);
-          console.log(
-            "First element selected for relationship:",
-            element.className
-          );
-        } else if (firstSelectedElement.id !== element.id) {
-          // Seleccionar segundo elemento y crear relación
-          const newRelationship: UMLRelationship = {
-            id: `link-${Date.now()}`,
-            source: firstSelectedElement.id,
-            target: element.id,
-            relationship: relationshipMode as UMLRelationship["relationship"],
-            label: relationshipMode,
-          };
+    (element: CustomElement | UMLRelationship | null) => {
+      if (element) {
+        if (relationshipMode) {
+          // Si estamos en modo relación y se hace click en un elemento, manejar la lógica de relación
+          if ("className" in element) {
+            // Es un CustomElement
+            if (!firstSelectedElement) {
+              // Seleccionar primer elemento
+              setFirstSelectedElement(element);
+              console.log(
+                "First element selected for relationship:",
+                element.className
+              );
+            } else if (firstSelectedElement.id !== element.id) {
+              // Seleccionar segundo elemento y crear relación
+              const newRelationship: UMLRelationship = {
+                id: `link-${Date.now()}`,
+                source: firstSelectedElement.id,
+                target: element.id,
+                relationship:
+                  relationshipMode as UMLRelationship["relationship"],
+                label: relationshipMode,
+              };
 
-          setDynamicLinks((prev) => [...prev, newRelationship]);
-          // El grafo se recrea automáticamente cuando cambian las dynamicLinks
+              setDynamicLinks((prev) => [...prev, newRelationship]);
+              // El grafo se recrea automáticamente cuando cambian las dynamicLinks
 
-          // Trackear la creación de la relación
-          trackRelationshipAdd(newRelationship);
+              // Trackear la creación de la relación
+              trackRelationshipAdd(newRelationship);
 
-          console.log("Relationship created:", newRelationship);
+              console.log("Relationship created:", newRelationship);
 
-          // Resetear modo de relación
-          setRelationshipMode(null);
-          setFirstSelectedElement(null);
+              // Resetear modo de relación
+              setRelationshipMode(null);
+              setFirstSelectedElement(null);
+            }
+          }
+        } else {
+          // Modo normal - seleccionar elemento o relación para edición
+          setSelectedElement(element);
         }
       } else {
-        // Modo normal - seleccionar elemento para edición
-        setSelectedElement(element);
+        // Deseleccionar elemento
+        setSelectedElement(null);
       }
     },
     [relationshipMode, firstSelectedElement, trackRelationshipAdd]
@@ -480,30 +443,23 @@ function App() {
     [dynamicElements, trackElementUpdate]
   );
 
-  const handleSelectRelationship = useCallback(
-    (relationship: UMLRelationship) => {
-      setSelectedElement(relationship);
+  const handleElementMove = useCallback(
+    (elementId: string, x: number, y: number) => {
+      console.log("Actualizando posición del elemento:", elementId, x, y);
+
+      // Actualizar la posición en dynamicElements
+      setDynamicElements((prev) =>
+        prev.map((el) => (el.id === elementId ? { ...el, x, y } : el))
+      );
     },
     []
   );
-
-  const handleDeselectElement = useCallback(() => {
-    if (relationshipMode) {
-      // Cancelar modo de relación
-      setRelationshipMode(null);
-      setFirstSelectedElement(null);
-      console.log("Relationship mode cancelled");
-    } else {
-      // Deseleccionar elemento normal
-      setSelectedElement(null);
-    }
-  }, [relationshipMode]);
 
   // Efecto para manejar la tecla Escape y cerrar el panel de propiedades
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape" && selectedElement) {
-        handleDeselectElement();
+        handleSelectElement(null);
       }
     };
 
@@ -516,7 +472,7 @@ function App() {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedElement, handleDeselectElement]); // Dependencia en selectedElement y handleDeselectElement
+  }, [selectedElement, handleSelectElement]); // Dependencias necesarias
 
   // Combinar elementos iniciales con dinámicos
   const allElements = useMemo(
@@ -561,28 +517,58 @@ function App() {
     dynamicElements.length
   );
 
-  // Recrear el key del GraphProvider cuando cambien los elementos o relaciones dinámicas
-  // Esto fuerza a React a recrear el grafo con los nuevos elementos/links
-  const graphKey = `graph-${dynamicElements.length}-${
-    dynamicLinks.length
-  }-${dynamicElements
-    .map(
-      (el) =>
-        el.id +
-        el.className +
-        el.attributes.join(",") +
-        (el.methods || []).join(",") +
-        (el.stereotype || "")
-    )
-    .join("-")}-${dynamicLinks
-    .map(
-      (l) => l.id + (l.sourceMultiplicity || "") + (l.targetMultiplicity || "")
-    )
-    .join("-")}`;
+  // Recrear el key del GraphProvider solo cuando cambie la sesión
+  // Los elementos se sincronizan dinámicamente sin recrear el grafo
+  const graphKey = `graph-session-${graphSessionId}`;
 
   return (
     <div className="app-container">
       <Header operations={operations} />
+
+      {/* Overlay de instrucciones para modo relación */}
+      {relationshipMode && (
+        <div
+          style={{
+            position: "fixed",
+            top: "80px", // Debajo del header
+            left: "50%",
+            transform: "translateX(-50%)",
+            backgroundColor: "#FFF3CD",
+            border: "1px solid #FFEAA7",
+            borderRadius: "4px",
+            padding: "8px 12px",
+            color: "#856404",
+            fontSize: "14px",
+            zIndex: 1000,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+            maxWidth: "500px",
+            textAlign: "center",
+          }}
+        >
+          <strong>Modo Relación:</strong> Creando {relationshipMode}.
+          {firstSelectedElement
+            ? ` Origen: "${firstSelectedElement.className}". Haz click en el elemento destino.`
+            : " Haz click en el elemento origen."}
+          <button
+            onClick={() => {
+              setRelationshipMode(null);
+              setFirstSelectedElement(null);
+            }}
+            style={{
+              marginLeft: "10px",
+              backgroundColor: "#6C757D",
+              color: "white",
+              border: "none",
+              borderRadius: "3px",
+              padding: "2px 6px",
+              cursor: "pointer",
+              fontSize: "12px",
+            }}
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       <div
         style={{
@@ -595,7 +581,7 @@ function App() {
           boxSizing: "border-box",
         }}
       >
-        <Toolbar onDragStart={handleDragStart} />
+        <Toolbar onDragStart={handleDragStart} onClick={handleAddElement} />
 
         <div
           style={{
@@ -605,44 +591,6 @@ function App() {
             minHeight: 0,
           }}
         >
-          {relationshipMode && (
-            <div
-              style={{
-                backgroundColor: "#FFF3CD",
-                border: "1px solid #FFEAA7",
-                borderRadius: "4px",
-                padding: "8px 12px",
-                marginBottom: "5px",
-                color: "#856404",
-                fontSize: "14px",
-                flexShrink: 0,
-              }}
-            >
-              <strong>Modo Relación:</strong> Creando {relationshipMode}.
-              {firstSelectedElement
-                ? ` Origen: "${firstSelectedElement.className}". Selecciona destino.`
-                : " Selecciona el primer elemento."}
-              <button
-                onClick={() => {
-                  setRelationshipMode(null);
-                  setFirstSelectedElement(null);
-                }}
-                style={{
-                  marginLeft: "10px",
-                  backgroundColor: "#6C757D",
-                  color: "white",
-                  border: "none",
-                  borderRadius: "3px",
-                  padding: "2px 6px",
-                  cursor: "pointer",
-                  fontSize: "12px",
-                }}
-              >
-                ✕
-              </button>
-            </div>
-          )}
-
           <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
             <div style={{ flex: 1, position: "relative" }}>
               <GraphProvider
@@ -652,12 +600,10 @@ function App() {
               >
                 <UMLDiagram
                   onAddElement={handleAddElement}
-                  selectedElement={selectedElement}
                   onSelectElement={handleSelectElement}
-                  onUpdateElementPosition={handleUpdateElementPosition}
-                  onSelectRelationship={handleSelectRelationship}
-                  dynamicLinks={dynamicLinks}
+                  onElementMove={handleElementMove}
                   elementMap={elementMap}
+                  relationships={dynamicLinks}
                 />
               </GraphProvider>
             </div>
@@ -670,7 +616,7 @@ function App() {
                 onDeleteElement={handleDeleteElement}
                 onAssignToPackage={handleAssignToPackage}
                 allElements={[...initialElements, ...dynamicElements]}
-                onClose={handleDeselectElement}
+                onClose={() => handleSelectElement(null)}
               />
             )}
           </div>

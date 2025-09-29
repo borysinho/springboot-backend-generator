@@ -76,7 +76,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   // Agregar etiqueta de relación si existe
   if (relationship.label) {
     link.labels.push({
-      position: 0.5,
+      position: 0.5, // Centro de la línea
       attrs: {
         text: {
           text: relationship.label,
@@ -98,7 +98,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   // Agregar multiplicidad en el extremo source (origen)
   if (relationship.sourceMultiplicity) {
     link.labels.push({
-      position: 0.15, // Más cerca del extremo source, alejado de la etiqueta central
+      position: 0, // Más alejado del extremo source
       attrs: {
         text: {
           text: relationship.sourceMultiplicity,
@@ -120,7 +120,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   // Agregar multiplicidad en el extremo target (destino)
   if (relationship.targetMultiplicity) {
     link.labels.push({
-      position: 0.85, // Más cerca del extremo target, alejado de la etiqueta central
+      position: 0.9, // Más alejado del extremo target
       attrs: {
         text: {
           text: relationship.targetMultiplicity,
@@ -142,7 +142,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   // Agregar roles si existen
   if (relationship.sourceRole) {
     link.labels.push({
-      position: 0.25, // Posición cerca del source
+      position: 0.3, // Posición intermedia entre multiplicidad y etiqueta central
       attrs: {
         text: {
           text: relationship.sourceRole,
@@ -156,7 +156,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
 
   if (relationship.targetRole) {
     link.labels.push({
-      position: 0.75, // Posición cerca del target
+      position: 0.7, // Posición intermedia entre etiqueta central y multiplicidad
       attrs: {
         text: {
           text: relationship.targetRole,
@@ -200,7 +200,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
         strokeWidth: 2,
         targetMarker: {
           type: "path",
-          d: "M 10 0 L 0 5 L 10 10 z",
+          d: "M 10 -5 0 0 10 5 z",
           fill: "white",
           stroke: "#3F51B5",
           strokeWidth: 2,
@@ -226,7 +226,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
         strokeDasharray: "5,5",
         targetMarker: {
           type: "path",
-          d: "M 10 0 L 0 5 L 10 10 z",
+          d: "M 10 -5 0 0 10 5 z",
           fill: "white",
           stroke: "#00BCD4",
           strokeWidth: 2,
@@ -239,7 +239,9 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
         strokeWidth: 2,
         targetMarker: {
           type: "path",
-          d: "M 10 0 L 0 5 L 10 10 z",
+          // d: "M 10 0 L 0 5 L 10 10 z",
+          // d: "M 20 -10 0 0 20 10 Z",
+          d: "M 10 -5 0 0 10 5 z",
           fill: "#FF5722",
         },
       };

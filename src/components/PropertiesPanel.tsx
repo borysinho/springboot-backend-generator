@@ -229,6 +229,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
         zIndex: 1000,
         maxHeight: "calc(100vh - 40px)",
         overflowY: "auto",
+        overflowX: "hidden",
         backdropFilter: "blur(10px)",
       }}
     >
@@ -304,6 +305,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   borderRadius: "6px",
                   fontSize: "14px",
                   transition: "border-color 0.2s",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = "#1976d2";
@@ -379,6 +383,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                     borderRadius: "6px",
                     fontSize: "14px",
                     transition: "border-color 0.2s",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
                   }}
                   onFocus={(e) => {
                     e.currentTarget.style.borderColor = "#1976d2";
@@ -432,6 +439,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       borderRadius: "4px",
                       fontSize: "12px",
                       transition: "border-color 0.2s",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = "#1976d2";
@@ -500,6 +510,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       borderRadius: "4px",
                       fontSize: "12px",
                       transition: "border-color 0.2s",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      whiteSpace: "nowrap",
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = "#1976d2";
@@ -545,6 +558,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                       padding: "10px",
                       maxHeight: "150px",
                       overflowY: "auto",
+                      overflowX: "hidden",
                     }}
                   >
                     {allElements
@@ -661,6 +675,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   borderRadius: "6px",
                   fontSize: "14px",
                   transition: "border-color 0.2s",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = "#1976d2";
@@ -731,6 +748,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   borderRadius: "6px",
                   fontSize: "14px",
                   transition: "border-color 0.2s",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = "#1976d2";
@@ -801,6 +821,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
                   borderRadius: "6px",
                   fontSize: "14px",
                   transition: "border-color 0.2s",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
                 }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = "#1976d2";
