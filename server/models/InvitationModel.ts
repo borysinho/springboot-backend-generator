@@ -1,3 +1,5 @@
+import { databaseService } from "../services/DatabaseService.js";
+
 export type InvitationStatus = "pending" | "accepted" | "rejected" | "expired";
 
 export interface Invitation {
@@ -16,155 +18,105 @@ export interface Invitation {
 }
 
 export class InvitationModel {
-  private invitations: Map<string, Invitation> = new Map();
-
   constructor() {
-    // Inicializar con algunas invitaciones de ejemplo si es necesario
+    // El servicio de base de datos maneja la persistencia
   }
 
   // Crear una nueva invitación
-  create(
+  async create(
     invitationData: Omit<
       Invitation,
       "id" | "createdAt" | "updatedAt" | "status"
     >
-  ): Invitation {
-    const id = `invitation_${Date.now()}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-    const now = new Date();
-
-    const invitation: Invitation = {
-      id,
-      ...invitationData,
-      status: "pending",
-      createdAt: now,
-      updatedAt: now,
-    };
-
-    this.invitations.set(id, invitation);
-    return invitation;
+  ): Promise<Invitation> {
+    return await databaseService.createInvitation(invitationData);
   }
 
   // Buscar invitación por ID
-  findById(id: string): Invitation | undefined {
-    return this.invitations.get(id);
+  async findById(id: string): Promise<Invitation | null> {
+    return await databaseService.findInvitationById(id);
   }
 
   // Buscar invitaciones por diagrama
-  findByDiagramId(diagramId: string): Invitation[] {
-    return Array.from(this.invitations.values()).filter(
-      (inv) => inv.diagramId === diagramId
-    );
+  async findByDiagramId(diagramId: string): Promise<Invitation[]> {
+    return await databaseService.findInvitationsByDiagram(diagramId);
   }
 
   // Buscar invitaciones por creador
-  findByCreatorId(creatorId: string): Invitation[] {
-    return Array.from(this.invitations.values()).filter(
-      (inv) => inv.creatorId === creatorId
+  async findByCreatorId(creatorId: string): Promise<Invitation[]> {
+    const allInvitations = await databaseService.findInvitationsByUser(
+      creatorId
     );
+    return allInvitations.filter((inv) => inv.creatorId === creatorId);
   }
 
   // Buscar invitaciones por email del invitado
-  findByInviteeEmail(email: string): Invitation[] {
-    return Array.from(this.invitations.values()).filter(
-      (inv) => inv.inviteeEmail === email
-    );
+  async findByInviteeEmail(email: string): Promise<Invitation[]> {
+    return await databaseService.findInvitationsByEmail(email);
   }
 
   // Buscar invitaciones pendientes para un email
-  findPendingByEmail(email: string): Invitation[] {
-    return Array.from(this.invitations.values()).filter(
-      (inv) => inv.inviteeEmail === email && inv.status === "pending"
-    );
+  async findPendingByEmail(email: string): Promise<Invitation[]> {
+    const allInvitations = await databaseService.findInvitationsByEmail(email);
+    return allInvitations.filter((inv) => inv.status === "pending");
   }
 
   // Aceptar invitación
-  accept(id: string, userId: string): Invitation | undefined {
-    const invitation = this.invitations.get(id);
-    if (!invitation || invitation.status !== "pending") return undefined;
+  async accept(id: string, userId: string): Promise<Invitation | null> {
+    const invitation = await databaseService.findInvitationById(id);
+    if (!invitation || invitation.status !== "pending") return null;
 
-    const now = new Date();
-    const updatedInvitation = {
-      ...invitation,
-      status: "accepted" as InvitationStatus,
-      inviteeId: userId,
-      acceptedAt: now,
-      updatedAt: now,
-    };
-
-    this.invitations.set(id, updatedInvitation);
-    return updatedInvitation;
+    return await databaseService.updateInvitationStatus(id, "accepted", userId);
   }
 
   // Rechazar invitación
-  reject(id: string): Invitation | undefined {
-    const invitation = this.invitations.get(id);
-    if (!invitation || invitation.status !== "pending") return undefined;
+  async reject(id: string): Promise<Invitation | null> {
+    const invitation = await databaseService.findInvitationById(id);
+    if (!invitation || invitation.status !== "pending") return null;
 
-    const now = new Date();
-    const updatedInvitation = {
-      ...invitation,
-      status: "rejected" as InvitationStatus,
-      rejectedAt: now,
-      updatedAt: now,
-    };
-
-    this.invitations.set(id, updatedInvitation);
-    return updatedInvitation;
+    return await databaseService.updateInvitationStatus(
+      id,
+      "rejected",
+      undefined,
+      new Date()
+    );
   }
 
   // Marcar como expirada
-  expire(id: string): Invitation | undefined {
-    const invitation = this.invitations.get(id);
-    if (!invitation || invitation.status !== "pending") return undefined;
+  async expire(id: string): Promise<Invitation | null> {
+    const invitation = await databaseService.findInvitationById(id);
+    if (!invitation || invitation.status !== "pending") return null;
 
-    const updatedInvitation = {
-      ...invitation,
-      status: "expired" as InvitationStatus,
-      updatedAt: new Date(),
-    };
-
-    this.invitations.set(id, updatedInvitation);
-    return updatedInvitation;
+    return await databaseService.updateInvitationStatus(id, "expired");
   }
 
   // Actualizar invitación
-  update(
+  async update(
     id: string,
     updates: Partial<Omit<Invitation, "id" | "createdAt">>
-  ): Invitation | undefined {
-    const invitation = this.invitations.get(id);
-    if (!invitation) return undefined;
-
-    const updatedInvitation = {
-      ...invitation,
-      ...updates,
-      updatedAt: new Date(),
-    };
-
-    this.invitations.set(id, updatedInvitation);
-    return updatedInvitation;
+  ): Promise<Invitation | null> {
+    return await databaseService.updateInvitation(id, updates);
   }
 
   // Eliminar invitación
-  delete(id: string): boolean {
-    return this.invitations.delete(id);
+  async delete(id: string): Promise<boolean> {
+    return await databaseService.deleteInvitation(id);
   }
 
   // Obtener todas las invitaciones
-  getAll(): Invitation[] {
-    return Array.from(this.invitations.values());
+  async getAll(): Promise<Invitation[]> {
+    return await databaseService.getAllInvitations();
   }
 
   // Limpiar invitaciones expiradas
-  cleanupExpired(): number {
+  async cleanupExpired(): Promise<number> {
+    const allInvitations = await databaseService.getAllInvitations();
     const now = new Date();
     let cleaned = 0;
 
-    for (const [id, invitation] of this.invitations) {
+    for (const invitation of allInvitations) {
       if (invitation.status === "pending" && invitation.expiresAt < now) {
-        this.expire(id);
+        await this.expire(invitation.id);
         cleaned++;
       }
     }

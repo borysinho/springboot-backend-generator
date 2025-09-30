@@ -1,5 +1,6 @@
 import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { GraphProvider, createElements } from "@joint/react";
+import { useSearchParams } from "react-router-dom";
 import "./App.css";
 
 // Importar tipos
@@ -29,9 +30,112 @@ const initialElements = createElements([
 
 // Componente principal del diagrama UML
 function App() {
+  const [searchParams] = useSearchParams();
+  const [diagramName, setDiagramName] = useState<string>("");
   const [dynamicElements, setDynamicElements] = useState<CustomElement[]>([]);
   const [elementCounter, setElementCounter] = useState(5);
   const [graphSessionId, setGraphSessionId] = useState(1);
+
+  // Leer el nombre del diagrama de los parámetros de la URL
+  useEffect(() => {
+    const loadDiagramName = async () => {
+      const nameParam = searchParams.get("name");
+      const userStr = localStorage.getItem("user");
+
+      if (!userStr) {
+        window.location.href = "/login";
+        return;
+      }
+
+      const user = JSON.parse(userStr);
+
+      if (nameParam) {
+        // Verificar si el nombre ya existe para este usuario
+        try {
+          const response = await fetch(
+            `/api/diagrams/check-name?name=${encodeURIComponent(
+              nameParam
+            )}&creatorId=${encodeURIComponent(user.id)}`
+          );
+
+          if (response.ok) {
+            const { exists } = await response.json();
+            if (exists) {
+              alert(
+                `Ya tienes un diagrama con el nombre "${nameParam}". Por favor elige un nombre diferente.`
+              );
+              // Redirigir al dashboard para que elija otro nombre
+              window.location.href = "/";
+              return;
+            }
+          }
+        } catch (error) {
+          console.error("Error checking diagram name:", error);
+        }
+
+        setDiagramName(nameParam);
+      } else {
+        // Si no hay nombre, pedirlo al usuario
+        let name = prompt("Ingresa el nombre del diagrama:");
+        let isValidName = false;
+
+        while (!isValidName && name !== null) {
+          if (!name || name.trim() === "") {
+            alert("El nombre del diagrama es obligatorio");
+            name = prompt("Ingresa el nombre del diagrama:");
+            continue;
+          }
+
+          name = name.trim();
+
+          try {
+            // Verificar si el nombre ya existe
+            const response = await fetch(
+              `/api/diagrams/check-name?name=${encodeURIComponent(
+                name
+              )}&creatorId=${encodeURIComponent(user.id)}`
+            );
+
+            if (response.ok) {
+              const { exists } = await response.json();
+              if (exists) {
+                alert(
+                  `Ya tienes un diagrama con el nombre "${name}". Por favor elige un nombre diferente.`
+                );
+                name = prompt("Ingresa el nombre del diagrama:");
+                continue;
+              }
+            }
+          } catch (error) {
+            console.error("Error checking diagram name:", error);
+            alert("Error al verificar el nombre del diagrama");
+            name = prompt("Ingresa el nombre del diagrama:");
+            continue;
+          }
+
+          isValidName = true;
+        }
+
+        if (name && name.trim()) {
+          setDiagramName(name.trim());
+          // Actualizar la URL con el nombre
+          const newSearchParams = new URLSearchParams(searchParams);
+          newSearchParams.set("name", name.trim());
+          window.history.replaceState(
+            null,
+            "",
+            `?${newSearchParams.toString()}`
+          );
+        } else {
+          // Si no se proporciona nombre, redirigir al dashboard
+          window.location.href = "/";
+          return;
+        }
+      }
+    };
+
+    loadDiagramName();
+  }, [searchParams]);
 
   // Configurar conexión Socket.IO usando el hook
   const { socket, isConnected } = useSocket();
@@ -67,7 +171,11 @@ function App() {
     trackRelationshipAdd,
     trackRelationshipRemove,
     trackRelationshipUpdate,
-  } = useDiagramSync(socket || undefined, "main-diagram", addNotification);
+  } = useDiagramSync(
+    socket || undefined,
+    diagramName || "temp-diagram",
+    addNotification
+  );
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, template: keyof typeof classTemplates) => {
@@ -556,7 +664,13 @@ function App() {
 
   return (
     <div className="app-container">
-      <Header operations={operations} socket={socket || undefined} />
+      <Header
+        title={
+          diagramName ? `Diagrama: ${diagramName}` : "Diagrama UML Colaborativo"
+        }
+        operations={operations}
+        socket={socket || undefined}
+      />
 
       {/* Sistema de notificaciones */}
       <NotificationSystem

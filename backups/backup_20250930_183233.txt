@@ -1,0 +1,8 @@
+Respaldo creado el: mar 30 sep 2025 18:32:33 -04
+Versión: Básica (pg_dump no disponible)
+
+Para restaurar, ejecuta:
+npm run db:reset
+npm run db:seed
+
+Esto recreará los datos de ejemplo.

@@ -1,4 +1,5 @@
 import React from "react";
+import { Link } from "react-router-dom";
 import ConnectionStatusBar from "./ConnectionStatusBar";
 import "./Header.css";
 import type { JsonPatchOperation } from "../hooks/useDiagramSync";
@@ -19,6 +20,9 @@ const Header: React.FC<HeaderProps> = ({
     <header className="app-header">
       <div className="header-content">
         <div className="header-left">
+          <Link to="/dashboard" className="dashboard-link">
+            ← Volver al Dashboard
+          </Link>
           <h1 className="app-title">{title}</h1>
           <div className="app-subtitle">
             Editor de diagramas UML en tiempo real

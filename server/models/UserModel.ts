@@ -1,3 +1,6 @@
+import { databaseService } from "../services/DatabaseService";
+import bcrypt from "bcrypt";
+
 export interface User {
   id: string;
   name: string;
@@ -8,78 +11,58 @@ export interface User {
 }
 
 export class UserModel {
-  private users: Map<string, User> = new Map();
-
   constructor() {
-    // Inicializar con algunos usuarios de ejemplo si es necesario
+    // El servicio de base de datos maneja la conexión
   }
 
   // Crear un nuevo usuario
-  create(userData: Omit<User, "id" | "createdAt" | "updatedAt">): User {
-    const id = `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    const now = new Date();
+  async create(
+    userData: Omit<User, "id" | "createdAt" | "updatedAt">
+  ): Promise<User> {
+    // Hashear la contraseña antes de guardar
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(userData.password, saltRounds);
 
-    const user: User = {
-      id,
+    const userWithHashedPassword = {
       ...userData,
-      createdAt: now,
-      updatedAt: now,
+      password: hashedPassword,
     };
 
-    this.users.set(id, user);
-    return user;
+    return await databaseService.createUser(userWithHashedPassword);
   }
 
   // Buscar usuario por ID
-  findById(id: string): User | undefined {
-    return this.users.get(id);
+  async findById(id: string): Promise<User | null> {
+    return await databaseService.findUserById(id);
   }
 
   // Buscar usuario por email
-  findByEmail(email: string): User | undefined {
-    for (const user of this.users.values()) {
-      if (user.email === email) {
-        return user;
-      }
-    }
-    return undefined;
+  async findByEmail(email: string): Promise<User | null> {
+    return await databaseService.findUserByEmail(email);
   }
 
   // Actualizar usuario
-  update(
+  async update(
     id: string,
     updates: Partial<Omit<User, "id" | "createdAt">>
-  ): User | undefined {
-    const user = this.users.get(id);
-    if (!user) return undefined;
-
-    const updatedUser = {
-      ...user,
-      ...updates,
-      updatedAt: new Date(),
-    };
-
-    this.users.set(id, updatedUser);
-    return updatedUser;
+  ): Promise<User | null> {
+    return await databaseService.updateUser(id, updates);
   }
 
   // Eliminar usuario
-  delete(id: string): boolean {
-    return this.users.delete(id);
-  }
-
-  // Obtener todos los usuarios
-  getAll(): User[] {
-    return Array.from(this.users.values());
+  async delete(id: string): Promise<boolean> {
+    return await databaseService.deleteUser(id);
   }
 
   // Validar credenciales (para login)
-  validateCredentials(email: string, password: string): User | undefined {
-    const user = this.findByEmail(email);
-    if (user && user.password === password) {
-      // En producción usar hash
+  async validateCredentials(
+    email: string,
+    password: string
+  ): Promise<User | null> {
+    const user = await this.findByEmail(email);
+    if (user && (await bcrypt.compare(password, user.password))) {
       return user;
     }
-    return undefined;
+    return null;
   }
 }

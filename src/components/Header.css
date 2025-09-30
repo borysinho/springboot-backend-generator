@@ -21,6 +21,23 @@
 
 .header-left {
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.dashboard-link {
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  transition: color 0.3s ease;
+}
+
+.dashboard-link:hover {
+  color: white;
+  text-decoration: underline;
 }
 
 .app-title {

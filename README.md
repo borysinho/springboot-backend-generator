@@ -1,69 +1,84 @@
-# React + TypeScript + Vite
+# JointJS UML Collaboration Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Una plataforma de colaboración para crear y editar diagramas UML en tiempo real utilizando JointJS.
 
-Currently, two official plugins are available:
+## 🚀 Inicio Rápido
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+```bash
+# Instalar dependencias
+npm install
 
-## Expanding the ESLint configuration
+# Configurar base de datos
+cp .env.example .env
+# Editar .env con tu configuración de base de datos
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+# Inicializar base de datos
+npm run db:init
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+# Iniciar servidor de desarrollo
+npm run server:dev
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# En otra terminal, iniciar cliente
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+La aplicación estará disponible en:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+- **Cliente:** http://localhost:5174
+- **Servidor API:** http://localhost:3001
 
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 📚 Documentación
+
+Toda la documentación detallada se encuentra en la carpeta [`docs/readme/`](./docs/readme/):
+
+- **[README-PROJECT.md](./docs/readme/README-PROJECT.md)** - Estado del proyecto y arquitectura
+- **[DATABASE_README.md](./docs/readme/DATABASE_README.md)** - Scripts y gestión de base de datos
+- **[NOTIFICATIONS_README.md](./docs/readme/NOTIFICATIONS_README.md)** - Sistema de notificaciones
+
+## 🛠️ Scripts Disponibles
+
+```bash
+# Desarrollo
+npm run dev              # Iniciar cliente de desarrollo
+npm run server:dev       # Iniciar servidor de desarrollo
+npm run build            # Construir para producción
+
+# Base de datos
+npm run db:init          # Inicializar base de datos completa
+npm run db:migrate       # Ejecutar migraciones
+npm run db:seed          # Poblar datos de ejemplo
+npm run db:studio        # Abrir Prisma Studio
+
+# Testing
+npm run test             # Ejecutar tests
+npm run test:watch       # Tests en modo watch
+npm run test:coverage    # Tests con cobertura
 ```
+
+## 🏗️ Arquitectura
+
+- **Frontend:** React + TypeScript + JointJS + Socket.IO
+- **Backend:** Node.js + Express + Socket.IO + Prisma ORM
+- **Base de datos:** PostgreSQL
+- **Comunicación:** WebSocket con JSON Patch operations
+
+## 📋 Características
+
+- ✅ Creación colaborativa de diagramas UML
+- ✅ Sincronización en tiempo real
+- ✅ Validación UML integrada
+- ✅ Sistema de invitaciones
+- ✅ Autenticación de usuarios
+- ✅ Persistencia con PostgreSQL
+
+## 🤝 Contribución
+
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
+3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
+4. Push a la rama (`git push origin feature/AmazingFeature`)
+5. Abre un Pull Request
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
