@@ -1,20 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
+import type { JsonPatchOperation } from "../hooks/useDiagramSync";
 import "./ConnectionStatusBar.css";
 
 interface User {
   id: string;
   name: string;
   connectedAt: Date;
-}
-
-interface JsonPatchOperation {
-  op: "add" | "remove" | "replace" | "move" | "copy" | "test";
-  path: string;
-  value?: unknown;
-  from?: string;
-  timestamp: Date;
-  description: string;
 }
 
 interface ConnectionStatusBarProps {
@@ -222,7 +214,7 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
             ) : (
               operations.map((operation, index) => (
                 <div
-                  key={`${operation.timestamp.getTime()}-${index}`}
+                  key={`${operation.timestamp}-${index}`}
                   className="operation-item"
                 >
                   <div className="operation-icon">
@@ -243,7 +235,9 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
                           {
                             op: operation.op,
                             path: operation.path,
-                            timestamp: operation.timestamp.toISOString(),
+                            timestamp: new Date(
+                              operation.timestamp
+                            ).toISOString(),
                             ...(operation.value
                               ? { value: operation.value }
                               : {}),
@@ -255,7 +249,7 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
                       </code>
                     </div>
                     <div className="operation-timestamp">
-                      {operation.timestamp.toLocaleTimeString()}
+                      {new Date(operation.timestamp).toLocaleTimeString()}
                     </div>
                   </div>
                 </div>

@@ -1,6 +1,5 @@
 import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { GraphProvider, createElements } from "@joint/react";
-import { io, Socket } from "socket.io-client";
 import "./App.css";
 
 // Importar tipos
@@ -14,6 +13,7 @@ import { convertRelationshipToLink } from "./utils/relationshipUtils";
 
 // Importar hooks
 import { useDiagramSync } from "./hooks/useDiagramSync";
+import { useSocket } from "./hooks/useSocket";
 
 // Importar componentes
 import { Toolbar } from "./components/Toolbar";
@@ -29,33 +29,19 @@ const initialElements = createElements([
 function App() {
   const [dynamicElements, setDynamicElements] = useState<CustomElement[]>([]);
   const [elementCounter, setElementCounter] = useState(5);
-  const [socket, setSocket] = useState<Socket | undefined>(undefined);
   const [graphSessionId, setGraphSessionId] = useState(1);
 
-  // Configurar conexión Socket.IO
+  // Configurar conexión Socket.IO usando el hook
+  const { socket, isConnected } = useSocket();
+
+  // Actualizar graphSessionId cuando se conecte
   useEffect(() => {
-    const socketInstance = io("http://localhost:3001", {
-      transports: ["websocket", "polling"],
-    });
-
-    socketInstance.on("connect", () => {
-      console.log(
-        "📡 Conectado al servidor para envío de operaciones JSON Patch"
-      );
-      // Incrementar el session ID para estabilizar el graphKey después de la conexión inicial
+    if (isConnected) {
+      console.log("📡 Conectado al servidor para colaboración en tiempo real");
       setGraphSessionId((prev) => prev + 1);
-    });
+    }
+  }, [isConnected]);
 
-    socketInstance.on("disconnect", () => {
-      console.log("📡 Desconectado del servidor");
-    });
-
-    setSocket(socketInstance);
-
-    return () => {
-      socketInstance.disconnect();
-    };
-  }, []);
   const [selectedElement, setSelectedElement] = useState<
     CustomElement | UMLRelationship | null
   >(null);
@@ -75,7 +61,7 @@ function App() {
     trackRelationshipAdd,
     trackRelationshipRemove,
     trackRelationshipUpdate,
-  } = useDiagramSync(socket);
+  } = useDiagramSync(socket || undefined, "main-diagram");
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, template: keyof typeof classTemplates) => {

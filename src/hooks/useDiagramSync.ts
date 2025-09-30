@@ -1,30 +1,104 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { CustomElement, UMLRelationship } from "../types";
 import { Socket } from "socket.io-client";
+import {
+  OperationTracker,
+  type JsonPatchOperation,
+} from "../utils/operationTracker";
 
-export interface JsonPatchOperation {
-  op: "add" | "remove" | "replace" | "move" | "copy" | "test";
-  path: string;
-  value?: unknown;
-  from?: string;
-  timestamp: Date;
-  description: string;
-}
+// Re-export para compatibilidad
+export type { JsonPatchOperation };
 
-export function useDiagramSync(socket?: Socket) {
+export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
+  const [_connectionStatus, setConnectionStatus] = useState<
+    "connecting" | "connected" | "disconnected"
+  >("disconnected");
+  const [_activeUsers, setActiveUsers] = useState<string[]>([]);
   const [operations, setOperations] = useState<JsonPatchOperation[]>([]);
 
-  const addOperation = useCallback(
-    (operation: Omit<JsonPatchOperation, "timestamp">) => {
-      const newOperation: JsonPatchOperation = {
-        ...operation,
-        timestamp: new Date(),
+  // Conectar al diagrama cuando el socket esté disponible
+  useEffect(() => {
+    if (socket && socket.connected) {
+      socket.emit("diagram:join", diagramId);
+      setConnectionStatus("connected");
+
+      // Escuchar eventos del servidor
+      const handleOperationConfirmed = (data: {
+        operation: JsonPatchOperation;
+      }) => {
+        console.log("Operación confirmada:", data.operation);
       };
+
+      const handleOperationRejected = (data: {
+        operation: JsonPatchOperation;
+        reason: string;
+      }) => {
+        console.error("Operación rechazada:", data.reason);
+        // Aquí podríamos mostrar una notificación al usuario
+      };
+
+      const handleOperationConflict = (data: {
+        operation: JsonPatchOperation;
+        conflicts: unknown[];
+      }) => {
+        console.warn("Conflicto detectado:", data.conflicts);
+        // Aquí podríamos mostrar una notificación de conflicto
+      };
+
+      const handleRemoteOperation = (data: {
+        operation: JsonPatchOperation;
+      }) => {
+        // Aplicar operación remota al estado local
+        setOperations((prev) => [data.operation, ...prev.slice(0, 19)]);
+      };
+
+      const handleUserJoined = (data: { userId: string }) => {
+        setActiveUsers((prev) => [...prev, data.userId]);
+      };
+
+      const handleUserLeft = (data: { userId: string }) => {
+        setActiveUsers((prev) => prev.filter((id) => id !== data.userId));
+      };
+
+      socket.on("operation:confirmed", handleOperationConfirmed);
+      socket.on("operation:rejected", handleOperationRejected);
+      socket.on("operation:conflict", handleOperationConflict);
+      socket.on("diagram:operation", handleRemoteOperation);
+      socket.on("user:joined", handleUserJoined);
+      socket.on("user:left", handleUserLeft);
+
+      return () => {
+        socket.off("operation:confirmed", handleOperationConfirmed);
+        socket.off("operation:rejected", handleOperationRejected);
+        socket.off("operation:conflict", handleOperationConflict);
+        socket.off("diagram:operation", handleRemoteOperation);
+        socket.off("user:joined", handleUserJoined);
+        socket.off("user:left", handleUserLeft);
+      };
+    } else {
+      setConnectionStatus("disconnected");
+    }
+  }, [socket, diagramId]);
+
+  const addOperation = useCallback(
+    (
+      operation: Omit<
+        JsonPatchOperation,
+        "clientId" | "timestamp" | "sequenceNumber"
+      >
+    ) => {
+      const newOperation = OperationTracker.createOperation(
+        operation.op,
+        operation.path,
+        operation.value,
+        operation.from,
+        operation.description
+      );
       setOperations((prev) => [newOperation, ...prev.slice(0, 19)]); // Mantener últimas 20 operaciones
 
       // Enviar la operación al servidor si hay socket disponible
       if (socket && socket.connected) {
-        socket.emit("json_patch_operation", newOperation);
+        socket.emit("diagram:operation", newOperation);
       }
     },
     [socket]
