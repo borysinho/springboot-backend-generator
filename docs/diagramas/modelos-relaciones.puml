@@ -1,0 +1,109 @@
+@startuml Diagrama de Relaciones de Modelos
+
+' Estilos
+skinparam backgroundColor #FEFEFE
+skinparam class {
+    BackgroundColor #FFFFFF
+    BorderColor #000000
+    BorderThickness 1
+    FontSize 11
+}
+
+' Clases principales
+class User {
+    +id: string
+    +name: string
+    +email: string
+    +password: string
+    +createdAt: datetime
+    +updatedAt: datetime
+    --
+    +create()
+    +findById()
+    +findByEmail()
+    +validateCredentials()
+    +update()
+    +delete()
+}
+
+class Invitation {
+    +id: string
+    +diagramId: string
+    +creatorId: string
+    +inviteeEmail: string
+    +inviteeId: string
+    +status: InvitationStatus
+    +message: string
+    +createdAt: datetime
+    +updatedAt: datetime
+    +expiresAt: datetime
+    +acceptedAt: datetime
+    +rejectedAt: datetime
+    --
+    +create()
+    +findById()
+    +accept()
+    +reject()
+    +expire()
+}
+
+class DiagramSnapshot {
+    +id: string
+    +diagramId: string
+    +name: string
+    +description: string
+    +creatorId: string
+    +collaborators: string[]
+    +state: DiagramState
+    +version: number
+    +isPublic: boolean
+    +tags: string[]
+    +createdAt: datetime
+    +updatedAt: datetime
+    +lastActivityAt: datetime
+    +thumbnail: string
+    --
+    +create()
+    +createVersion()
+    +getLatestByDiagramId()
+    +addCollaborator()
+    +removeCollaborator()
+    +findByCreatorId()
+    +findByCollaboratorId()
+}
+
+class DiagramModel {
+    -state: DiagramState
+    -observers: Set
+    --
+    +applyOperation()
+    +getState()
+    +subscribe()
+    +unsubscribe()
+}
+
+class DiagramState {
+    +elements: Record<string, DiagramElement>
+    +relationships: Record<string, DiagramRelationship>
+    +version: number
+    +lastModified: number
+}
+
+' Relaciones
+User ||--o{ Invitation : crea/envía
+User ||--o{ DiagramSnapshot : crea
+User }o--o{ DiagramSnapshot : colabora
+
+Invitation }o--|| DiagramSnapshot : pertenece_a
+
+DiagramSnapshot ||--|| DiagramModel : contiene_estado
+DiagramModel *-- DiagramState : tiene
+
+' Notas explicativas
+note right of User : Usuario del sistema\ncon autenticación
+note right of Invitation : Sistema de invitaciones\ncon expiración
+note right of DiagramSnapshot : Snapshots versionados\ndel diagrama
+note right of DiagramModel : Estado en tiempo real\ndel diagrama
+note right of DiagramState : Estructura de datos\ndel diagrama
+
+@enduml

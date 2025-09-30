@@ -2,15 +2,18 @@ import React from "react";
 import ConnectionStatusBar from "./ConnectionStatusBar";
 import "./Header.css";
 import type { JsonPatchOperation } from "../hooks/useDiagramSync";
+import type { Socket } from "socket.io-client";
 
 interface HeaderProps {
   title?: string;
   operations?: JsonPatchOperation[];
+  socket?: Socket;
 }
 
 const Header: React.FC<HeaderProps> = ({
   title = "Diagrama UML Colaborativo",
   operations = [],
+  socket,
 }) => {
   return (
     <header className="app-header">
@@ -23,7 +26,7 @@ const Header: React.FC<HeaderProps> = ({
         </div>
 
         <div className="header-right">
-          <ConnectionStatusBar operations={operations} />
+          <ConnectionStatusBar operations={operations} socket={socket} />
         </div>
       </div>
     </header>

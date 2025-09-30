@@ -68,6 +68,21 @@ export class UMLValidator {
     const warnings: string[] = [];
 
     try {
+      // Validar campos requeridos
+      if (!operation.clientId || operation.clientId.trim() === "") {
+        errors.push("clientId es requerido");
+      }
+
+      // Validar path
+      if (!operation.path || !operation.path.startsWith("/")) {
+        errors.push("Path debe comenzar con /");
+      } else if (
+        !operation.path.startsWith("/elements/") &&
+        !operation.path.startsWith("/relationships/")
+      ) {
+        errors.push(`Path no válido: ${operation.path}`);
+      }
+
       switch (operation.op) {
         case "add":
           this.validateAddOperation(
@@ -114,6 +129,23 @@ export class UMLValidator {
     errors: string[],
     warnings: string[]
   ) {
+    // Extraer ID del path
+    const pathParts = operation.path.split("/");
+    const itemId = pathParts[pathParts.length - 1];
+
+    // Validar que el ID no esté duplicado
+    if (operation.path.startsWith("/elements/")) {
+      if (diagram.elements.some((e) => e.id === itemId)) {
+        errors.push(`ID de elemento duplicado: ${itemId}`);
+        return;
+      }
+    } else if (operation.path.startsWith("/relationships/")) {
+      if (diagram.relationships.some((r) => r.id === itemId)) {
+        errors.push(`ID de relación duplicado: ${itemId}`);
+        return;
+      }
+    }
+
     if (operation.path.startsWith("/elements/")) {
       this.validateElement(
         operation.value as Element,
@@ -140,42 +172,46 @@ export class UMLValidator {
     // Para operaciones de reemplazo, validar el nuevo valor
     if (operation.path.includes("/elements/")) {
       const pathParts = operation.path.split("/");
-      const elementIndex = parseInt(pathParts[2]);
-      if (!isNaN(elementIndex) && diagram.elements[elementIndex]) {
-        const updatedElement = { ...diagram.elements[elementIndex] };
+      const elementId = pathParts[2];
 
-        // Aplicar el cambio al elemento
-        const propertyPath = pathParts.slice(3).join("/");
-        this.setNestedProperty(updatedElement, propertyPath, operation.value);
-
-        this.validateElement(updatedElement, diagram, errors, warnings);
+      // Verificar si el elemento existe
+      const existingElement = diagram.elements.find((e) => e.id === elementId);
+      if (!existingElement) {
+        errors.push(`Elemento no encontrado: ${elementId}`);
+        return;
       }
+
+      const updatedElement = { ...existingElement };
+
+      // Aplicar el cambio al elemento
+      const propertyPath = pathParts.slice(3).join("/");
+      this.setNestedProperty(updatedElement, propertyPath, operation.value);
+
+      this.validateElement(updatedElement, diagram, errors, warnings);
     } else if (operation.path.includes("/relationships/")) {
       const pathParts = operation.path.split("/");
-      const relationshipIndex = parseInt(pathParts[2]);
-      if (
-        !isNaN(relationshipIndex) &&
-        diagram.relationships[relationshipIndex]
-      ) {
-        const updatedRelationship = {
-          ...diagram.relationships[relationshipIndex],
-        };
+      const relationshipId = pathParts[2];
 
-        // Aplicar el cambio a la relación
-        const propertyPath = pathParts.slice(3).join("/");
-        this.setNestedProperty(
-          updatedRelationship,
-          propertyPath,
-          operation.value
-        );
-
-        this.validateRelationship(
-          updatedRelationship,
-          diagram,
-          errors,
-          warnings
-        );
+      // Verificar si la relación existe
+      const existingRelationship = diagram.relationships.find(
+        (r) => r.id === relationshipId
+      );
+      if (!existingRelationship) {
+        errors.push(`Relación no encontrada: ${relationshipId}`);
+        return;
       }
+
+      const updatedRelationship = { ...existingRelationship };
+
+      // Aplicar el cambio a la relación
+      const propertyPath = pathParts.slice(3).join("/");
+      this.setNestedProperty(
+        updatedRelationship,
+        propertyPath,
+        operation.value
+      );
+
+      this.validateRelationship(updatedRelationship, diagram, errors, warnings);
     }
   }
 
@@ -206,6 +242,19 @@ export class UMLValidator {
     errors: string[],
     warnings: string[]
   ) {
+    // Validar tipo de elemento válido
+    const validElementTypes = [
+      "class",
+      "interface",
+      "enumeration",
+      "package",
+      "note",
+    ];
+    if (!validElementTypes.includes(element.elementType)) {
+      errors.push(`Tipo de elemento no válido: ${element.elementType}`);
+      return;
+    }
+
     // Validar nombre único en el diagrama
     if (this.isNameTaken(element.className, element.parentPackageId, diagram)) {
       errors.push(`Nombre '${element.className}' ya existe en el paquete`);
@@ -241,19 +290,24 @@ export class UMLValidator {
     errors: string[],
     warnings: string[]
   ) {
+    // Manejar tanto el formato con source/target como sourceId/targetId
+    const sourceId = (relationship as any).sourceId || relationship.source;
+    const targetId = (relationship as any).targetId || relationship.target;
+
     // Validar que elementos existen
-    const sourceExists = diagram.elements.some(
-      (e) => e.id === relationship.source
-    );
-    const targetExists = diagram.elements.some(
-      (e) => e.id === relationship.target
-    );
+    const sourceExists = diagram.elements.some((e) => e.id === sourceId);
+    const targetExists = diagram.elements.some((e) => e.id === targetId);
 
     if (!sourceExists) {
-      errors.push(`Elemento source '${relationship.source}' no existe`);
+      errors.push(`Elemento source no encontrado: ${sourceId}`);
     }
     if (!targetExists) {
-      errors.push(`Elemento target '${relationship.target}' no existe`);
+      errors.push(`Elemento target no encontrado: ${targetId}`);
+    }
+
+    // Validar auto-referencia
+    if (sourceId === targetId) {
+      errors.push("Una relación no puede referenciar al mismo elemento");
     }
 
     // Validar cardinalidad
@@ -276,8 +330,8 @@ export class UMLValidator {
 
     // Validar tipos de relación permitidos
     if (sourceExists && targetExists) {
-      const source = diagram.elements.find((e) => e.id === relationship.source);
-      const target = diagram.elements.find((e) => e.id === relationship.target);
+      const source = diagram.elements.find((e) => e.id === sourceId);
+      const target = diagram.elements.find((e) => e.id === targetId);
       if (
         source &&
         target &&
@@ -295,20 +349,48 @@ export class UMLValidator {
     errors: string[],
     warnings: string[]
   ) {
-    // Validar atributos
+    // Validar atributos con sintaxis correcta
     if (element.attributes) {
       element.attributes.forEach((attr: string, index: number) => {
-        if (!attr.includes(":")) {
-          warnings.push(`Atributo ${index + 1} no tiene tipo especificado`);
+        if (!this.isValidAttributeSyntax(attr)) {
+          errors.push(`Atributo ${index + 1} tiene sintaxis inválida: ${attr}`);
         }
       });
     }
 
-    // Validar métodos
+    // Validar métodos con sintaxis correcta
     if (element.methods) {
       element.methods.forEach((method: string, index: number) => {
-        if (!method.includes("(") || !method.includes(")")) {
-          errors.push(`Método ${index + 1} tiene formato inválido`);
+        if (!this.isValidMethodSyntax(method)) {
+          errors.push(`Método ${index + 1} tiene sintaxis inválida: ${method}`);
+        }
+      });
+
+      // Validar que métodos abstractos solo estén en clases abstractas
+      const hasAbstractMethods = element.methods.some(
+        (m) => m.includes("abstract ") || m.includes("{abstract}")
+      );
+      if (hasAbstractMethods && !element.stereotype?.includes("abstract")) {
+        errors.push("Clase con métodos abstractos debe ser abstracta");
+      }
+    }
+
+    // Validar que no haya atributos finales con métodos setters
+    if (element.attributes && element.methods) {
+      const finalAttributes = element.attributes.filter(
+        (attr) => attr.includes("final ") || attr.includes("{final}")
+      );
+      const setters = element.methods.filter(
+        (method) => method.includes("set") && method.includes("(")
+      );
+
+      finalAttributes.forEach((finalAttr) => {
+        const attrName = this.extractAttributeName(finalAttr);
+        const hasSetter = setters.some((setter) =>
+          setter.toLowerCase().includes(`set${attrName.toLowerCase()}`)
+        );
+        if (hasSetter) {
+          errors.push(`Atributo final '${attrName}' no puede tener setter`);
         }
       });
     }
@@ -449,11 +531,126 @@ export class UMLValidator {
       }
     });
 
-    // Validar dependencias circulares (simplificado)
-    const hasCircularDeps = this.detectCircularDependencies(diagram);
+    // Validar herencia múltiple (no permitida en clases)
+    this.validateMultipleInheritance(diagram, errors);
+
+    // Validar que interfaces no hereden de clases
+    this.validateInterfaceInheritance(diagram, errors);
+
+    // Validar composición (elementos contenidos no pueden existir fuera)
+    this.validateCompositionIntegrity(diagram, errors);
+
+    // Validar alcance de elementos
+    this.validateElementScope(diagram, errors, warnings);
+
+    // Validar dependencias circulares
+    const hasCircularDeps = UMLValidator.detectCircularDependencies(diagram);
     if (hasCircularDeps) {
       warnings.push("Posible dependencia circular detectada");
     }
+  }
+
+  private static validateMultipleInheritance(
+    diagram: Diagram,
+    errors: string[]
+  ) {
+    // Encontrar todas las clases
+    const classes = diagram.elements.filter((e) => e.elementType === "class");
+
+    classes.forEach((classElement) => {
+      // Contar relaciones de generalización donde esta clase es el source
+      const generalizations = diagram.relationships.filter(
+        (rel) =>
+          rel.relationship === "generalization" &&
+          rel.source === classElement.id
+      );
+
+      if (generalizations.length > 1) {
+        errors.push(
+          `Clase '${classElement.className}' tiene herencia múltiple (no permitida)`
+        );
+      }
+    });
+  }
+
+  private static validateInterfaceInheritance(
+    diagram: Diagram,
+    errors: string[]
+  ) {
+    // Interfaces no pueden heredar de clases
+    diagram.relationships.forEach((rel) => {
+      if (
+        rel.relationship === "generalization" ||
+        rel.relationship === "realization"
+      ) {
+        const source = diagram.elements.find((e) => e.id === rel.source);
+        const target = diagram.elements.find((e) => e.id === rel.target);
+
+        if (
+          source?.elementType === "interface" &&
+          target?.elementType === "class"
+        ) {
+          errors.push(
+            `Interface '${source.className}' no puede heredar de clase '${target.className}'`
+          );
+        }
+      }
+    });
+  }
+
+  private static validateCompositionIntegrity(
+    diagram: Diagram,
+    errors: string[]
+  ) {
+    // En composición, el elemento contenido debe tener parentPackageId
+    diagram.relationships.forEach((rel) => {
+      if (rel.relationship === "composition") {
+        const source = diagram.elements.find((e) => e.id === rel.source);
+        const target = diagram.elements.find((e) => e.id === rel.target);
+
+        if (source && target) {
+          // El elemento target debe estar contenido en el source
+          if (!target.parentPackageId || target.parentPackageId !== source.id) {
+            errors.push(
+              `Composición: '${target.className}' debe estar contenido en '${source.className}'`
+            );
+          }
+        }
+      }
+    });
+  }
+
+  private static validateElementScope(
+    diagram: Diagram,
+    errors: string[],
+    warnings: string[]
+  ) {
+    // Validar que elementos sin paquete padre estén en el paquete raíz
+    diagram.elements.forEach((element) => {
+      if (!element.parentPackageId && element.elementType !== "package") {
+        // Verificar si hay algún paquete en el diagrama
+        const hasPackages = diagram.elements.some(
+          (e) => e.elementType === "package"
+        );
+        if (hasPackages) {
+          warnings.push(
+            `Elemento '${element.className}' no tiene paquete padre asignado`
+          );
+        }
+      }
+    });
+
+    // Validar que paquetes no se contengan a sí mismos
+    diagram.elements.forEach((element) => {
+      if (
+        element.elementType === "package" &&
+        element.containedElements?.includes(element.id)
+      ) {
+        errors.push(
+          `Paquete '${element.className}' no puede contenerse a sí mismo`
+        );
+      }
+    });
   }
 
   private static detectCircularDependencies(diagram: Diagram): boolean {
@@ -486,7 +683,10 @@ export class UMLValidator {
     graph: { [key: string]: string[] },
     visited: Set<string>
   ): boolean {
-    if (visited.has(node)) return true;
+    if (visited.has(node)) {
+      return true; // Ciclo detectado
+    }
+
     visited.add(node);
 
     const neighbors = graph[node] || [];
@@ -497,6 +697,32 @@ export class UMLValidator {
     }
 
     return false;
+  }
+
+  private static isValidAttributeSyntax(attribute: string): boolean {
+    // Sintaxis básica simplificada: nombre:Tipo
+    const trimmed = attribute.trim();
+    return trimmed.includes(":") && trimmed.split(":").length === 2;
+  }
+
+  private static isValidMethodSyntax(method: string): boolean {
+    // Sintaxis básica simplificada: nombre()
+    const trimmed = method.trim();
+    return (
+      trimmed.includes("(") &&
+      trimmed.includes(")") &&
+      trimmed.indexOf("(") < trimmed.indexOf(")")
+    );
+  }
+
+  private static extractAttributeName(attribute: string): string {
+    // Extraer nombre del atributo antes de ':'
+    let name = attribute.trim().split(":")[0].trim();
+    // Remover visibilidad
+    name = name.replace(/^[+\-#~]\s*/, "");
+    // Remover modificadores
+    name = name.replace(/^(static|final|abstract)\s+/, "");
+    return name;
   }
 
   private static setNestedProperty(

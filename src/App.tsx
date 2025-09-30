@@ -14,12 +14,14 @@ import { convertRelationshipToLink } from "./utils/relationshipUtils";
 // Importar hooks
 import { useDiagramSync } from "./hooks/useDiagramSync";
 import { useSocket } from "./hooks/useSocket";
+import { useNotifications } from "./hooks/useNotifications";
 
 // Importar componentes
 import { Toolbar } from "./components/Toolbar";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { UMLDiagram } from "./components/UMLDiagram";
 import Header from "./components/Header";
+import NotificationSystem from "./components/NotificationSystem";
 
 const initialElements = createElements([
   // Diagrama vacío - sin elementos de ejemplo
@@ -33,6 +35,10 @@ function App() {
 
   // Configurar conexión Socket.IO usando el hook
   const { socket, isConnected } = useSocket();
+
+  // Configurar sistema de notificaciones
+  const { notifications, addNotification, removeNotification } =
+    useNotifications();
 
   // Actualizar graphSessionId cuando se conecte
   useEffect(() => {
@@ -55,13 +61,13 @@ function App() {
   // Hook para sincronización y tracking de operaciones
   const {
     operations,
-    trackElementAdd,
+    trackElementAddWithCallbacks,
     trackElementRemove,
     trackElementUpdate,
     trackRelationshipAdd,
     trackRelationshipRemove,
     trackRelationshipUpdate,
-  } = useDiagramSync(socket || undefined, "main-diagram");
+  } = useDiagramSync(socket || undefined, "main-diagram", addNotification);
 
   const handleDragStart = useCallback(
     (e: React.DragEvent, template: keyof typeof classTemplates) => {
@@ -170,15 +176,56 @@ function App() {
         height: 120,
       };
 
-      setDynamicElements((prev) => [...prev, newElement]);
+      // Incrementar contador inmediatamente para evitar conflictos de IDs
       setElementCounter((prev) => prev + 1);
 
-      // Trackear la operación
-      trackElementAdd(newElement);
+      // Enviar operación con callbacks para confirmación/rechazo
+      trackElementAddWithCallbacks(
+        newElement,
+        // Callback de confirmación - agregar elemento a la UI
+        () => {
+          console.log(
+            "✅ Operación confirmada, agregando elemento a la UI:",
+            newElement.className
+          );
+          setDynamicElements((prev) => [...prev, newElement]);
 
-      console.log("Element added:", newElement);
+          // Mostrar notificación de éxito
+          addNotification(
+            "success",
+            "Elemento Agregado",
+            `"${newElement.className}" (${newElement.elementType}) se agregó correctamente al diagrama.`,
+            true, // Auto-close después de 3 segundos
+            3000
+          );
+        },
+        // Callback de rechazo - mostrar mensaje (el hook ya muestra notificación)
+        (_, reason) => {
+          console.log(
+            "❌ Operación rechazada, elemento NO agregado:",
+            newElement.className,
+            "razón:",
+            reason
+          );
+
+          // Agregar notificación específica para elemento no agregado
+          addNotification(
+            "error",
+            "Elemento No Agregado",
+            `No se pudo agregar "${newElement.className}" (${newElement.elementType}). ${reason}`,
+            false // No auto-close para errores importantes
+          );
+        }
+      );
+
+      console.log("Element operation sent:", newElement);
     },
-    [dynamicElements, elementCounter, trackElementAdd]
+    [
+      dynamicElements,
+      elementCounter,
+      trackElementAddWithCallbacks,
+      addNotification,
+    ]
   );
 
   const handleSelectElement = useCallback(
@@ -509,7 +556,13 @@ function App() {
 
   return (
     <div className="app-container">
-      <Header operations={operations} />
+      <Header operations={operations} socket={socket || undefined} />
+
+      {/* Sistema de notificaciones */}
+      <NotificationSystem
+        notifications={notifications}
+        onRemove={removeNotification}
+      />
 
       {/* Overlay de instrucciones para modo relación */}
       {relationshipMode && (

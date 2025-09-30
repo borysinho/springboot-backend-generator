@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import type { CustomElement, UMLRelationship } from "../types";
 import { Socket } from "socket.io-client";
 import {
@@ -9,12 +9,31 @@ import {
 // Re-export para compatibilidad
 export type { JsonPatchOperation };
 
-export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
+export function useDiagramSync(
+  socket?: Socket,
+  diagramId: string = "default",
+  onNotification?: (
+    type: "success" | "error" | "warning" | "info",
+    title: string,
+    message: string
+  ) => void
+) {
   const [_connectionStatus, setConnectionStatus] = useState<
     "connecting" | "connected" | "disconnected"
   >("disconnected");
   const [_activeUsers, setActiveUsers] = useState<string[]>([]);
   const [operations, setOperations] = useState<JsonPatchOperation[]>([]);
+
+  // Estado para almacenar callbacks de operaciones pendientes
+  const operationCallbacks = useRef<
+    Map<
+      number,
+      {
+        onConfirmed?: (operation: JsonPatchOperation) => void;
+        onRejected?: (operation: JsonPatchOperation, reason: string) => void;
+      }
+    >
+  >(new Map());
 
   // Conectar al diagrama cuando el socket esté disponible
   useEffect(() => {
@@ -27,6 +46,15 @@ export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
         operation: JsonPatchOperation;
       }) => {
         console.log("Operación confirmada:", data.operation);
+
+        // Ejecutar callback si existe
+        const callbacks = operationCallbacks.current.get(
+          data.operation.sequenceNumber
+        );
+        if (callbacks?.onConfirmed) {
+          callbacks.onConfirmed(data.operation);
+          operationCallbacks.current.delete(data.operation.sequenceNumber);
+        }
       };
 
       const handleOperationRejected = (data: {
@@ -34,7 +62,18 @@ export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
         reason: string;
       }) => {
         console.error("Operación rechazada:", data.reason);
-        // Aquí podríamos mostrar una notificación al usuario
+        if (onNotification) {
+          onNotification("error", "Operación Rechazada", data.reason);
+        }
+
+        // Ejecutar callback si existe
+        const callbacks = operationCallbacks.current.get(
+          data.operation.sequenceNumber
+        );
+        if (callbacks?.onRejected) {
+          callbacks.onRejected(data.operation, data.reason);
+          operationCallbacks.current.delete(data.operation.sequenceNumber);
+        }
       };
 
       const handleOperationConflict = (data: {
@@ -42,7 +81,13 @@ export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
         conflicts: unknown[];
       }) => {
         console.warn("Conflicto detectado:", data.conflicts);
-        // Aquí podríamos mostrar una notificación de conflicto
+        if (onNotification) {
+          onNotification(
+            "warning",
+            "Conflicto Detectado",
+            "Se detectó un conflicto en la operación. Los cambios pueden no haberse aplicado correctamente."
+          );
+        }
       };
 
       const handleRemoteOperation = (data: {
@@ -78,7 +123,7 @@ export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
     } else {
       setConnectionStatus("disconnected");
     }
-  }, [socket, diagramId]);
+  }, [socket, diagramId, onNotification]);
 
   const addOperation = useCallback(
     (
@@ -104,16 +149,60 @@ export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
     [socket]
   );
 
-  const trackElementAdd = useCallback(
-    (element: CustomElement) => {
-      addOperation({
-        op: "add",
-        path: "/elements/-",
-        value: element,
-        description: `Elemento ${element.elementType} "${element.className}" agregado`,
-      });
+  const addOperationWithCallbacks = useCallback(
+    (
+      operation: Omit<
+        JsonPatchOperation,
+        "clientId" | "timestamp" | "sequenceNumber"
+      >,
+      onConfirmed?: (operation: JsonPatchOperation) => void,
+      onRejected?: (operation: JsonPatchOperation, reason: string) => void
+    ) => {
+      const newOperation = OperationTracker.createOperation(
+        operation.op,
+        operation.path,
+        operation.value,
+        operation.from,
+        operation.description
+      );
+      setOperations((prev) => [newOperation, ...prev.slice(0, 19)]); // Mantener últimas 20 operaciones
+
+      // Almacenar callbacks para esta operación
+      if (onConfirmed || onRejected) {
+        operationCallbacks.current.set(newOperation.sequenceNumber, {
+          onConfirmed,
+          onRejected,
+        });
+      }
+
+      // Enviar la operación al servidor si hay socket disponible
+      if (socket && socket.connected) {
+        socket.emit("diagram:operation", newOperation);
+      }
+
+      return newOperation;
     },
-    [addOperation]
+    [socket]
+  );
+
+  const trackElementAddWithCallbacks = useCallback(
+    (
+      element: CustomElement,
+      onConfirmed?: (operation: JsonPatchOperation) => void,
+      onRejected?: (operation: JsonPatchOperation, reason: string) => void
+    ) => {
+      addOperationWithCallbacks(
+        {
+          op: "add",
+          path: "/elements/-",
+          value: element,
+          description: `Elemento ${element.elementType} "${element.className}" agregado`,
+        },
+        onConfirmed,
+        onRejected
+      );
+    },
+    [addOperationWithCallbacks]
   );
 
   const trackElementRemove = useCallback(
@@ -252,7 +341,7 @@ export function useDiagramSync(socket?: Socket, diagramId: string = "default") {
 
   return {
     operations,
-    trackElementAdd,
+    trackElementAddWithCallbacks,
     trackElementRemove,
     trackElementUpdate,
     trackRelationshipAdd,
