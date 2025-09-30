@@ -539,7 +539,9 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
               ))}
             </div>
 
-            {selectedElement.elementType === "class" && (
+            {(selectedElement.elementType === "class" ||
+              selectedElement.elementType === "interface" ||
+              selectedElement.elementType === "enumeration") && (
               <>
                 <div style={{ marginBottom: "12px" }}>
                   <label
