@@ -27,14 +27,6 @@ La aplicación estará disponible en:
 - **Cliente:** http://localhost:5174
 - **Servidor API:** http://localhost:3001
 
-## 📚 Documentación
-
-Toda la documentación detallada se encuentra en la carpeta [`docs/readme/`](./docs/readme/):
-
-- **[README-PROJECT.md](./docs/readme/README-PROJECT.md)** - Estado del proyecto y arquitectura
-- **[DATABASE_README.md](./docs/readme/DATABASE_README.md)** - Scripts y gestión de base de datos
-- **[NOTIFICATIONS_README.md](./docs/readme/NOTIFICATIONS_README.md)** - Sistema de notificaciones
-
 ## 🛠️ Scripts Disponibles
 
 ```bash
@@ -78,7 +70,3 @@ npm run test:coverage    # Tests con cobertura
 3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
 4. Push a la rama (`git push origin feature/AmazingFeature`)
 5. Abre un Pull Request
-
-## 📄 Licencia
-
-Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
