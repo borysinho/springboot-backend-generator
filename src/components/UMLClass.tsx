@@ -76,11 +76,13 @@ export const UMLClass: React.FC<UMLClassProps> = ({
         borderRadius: "8px",
         fontFamily: elementType === "note" ? "Arial, sans-serif" : "monospace",
         fontSize: "12px",
-        overflow: "hidden",
+        overflow: "visible", // Cambiado de "hidden" a "visible" para que el texto no se corte
+        wordWrap: "break-word", // Permitir quiebre de palabras
+        whiteSpace: "pre-wrap", // Mantener espacios y saltos de línea
         boxShadow: isSelected
           ? "0 0 0 3px #007bff, 2px 2px 5px rgba(0,0,0,0.1)"
           : "2px 2px 5px rgba(0,0,0,0.1)",
-        minWidth: "150px",
+        minWidth: "140px", // Aumentado para coincidir con baseWidth
         cursor: "inherit", // Heredar cursor del elemento padre (JointJS)
         userSelect: "none", // Evitar selección de texto
         transition: "box-shadow 0.2s",
@@ -127,7 +129,14 @@ export const UMLClass: React.FC<UMLClassProps> = ({
       {elementType === "interface" && (
         <div style={{ padding: "4px 8px" }}>
           {element.methods?.map((method, index) => (
-            <div key={index} style={{ margin: "2px 0" }}>
+            <div
+              key={index}
+              style={{
+                margin: "2px 0",
+                wordBreak: "break-all",
+                overflowWrap: "break-word",
+              }}
+            >
               {method}
             </div>
           ))}
@@ -137,7 +146,15 @@ export const UMLClass: React.FC<UMLClassProps> = ({
       {elementType === "enumeration" && (
         <div style={{ padding: "8px" }}>
           {element.attributes?.map((value, index) => (
-            <div key={index} style={{ margin: "4px 0", textAlign: "center" }}>
+            <div
+              key={index}
+              style={{
+                margin: "4px 0",
+                textAlign: "center",
+                wordBreak: "break-all",
+                overflowWrap: "break-word",
+              }}
+            >
               {value}
             </div>
           ))}
@@ -147,7 +164,14 @@ export const UMLClass: React.FC<UMLClassProps> = ({
       {elementType === "note" && (
         <div style={{ padding: "8px", fontSize: "11px", lineHeight: "1.4" }}>
           {element.attributes?.map((line, index) => (
-            <div key={index} style={{ margin: "2px 0" }}>
+            <div
+              key={index}
+              style={{
+                margin: "2px 0",
+                wordBreak: "break-all",
+                overflowWrap: "break-word",
+              }}
+            >
               {line}
             </div>
           ))}
@@ -155,7 +179,15 @@ export const UMLClass: React.FC<UMLClassProps> = ({
       )}
 
       {elementType === "package" && (
-        <div style={{ padding: "20px", textAlign: "center", color: "#666" }}>
+        <div
+          style={{
+            padding: "20px",
+            textAlign: "center",
+            color: "#666",
+            wordBreak: "break-all",
+            overflowWrap: "break-word",
+          }}
+        >
           Paquete vacío
         </div>
       )}
@@ -174,7 +206,14 @@ export const UMLClass: React.FC<UMLClassProps> = ({
             }}
           >
             {element.attributes?.map((attr, index) => (
-              <div key={index} style={{ margin: "2px 0" }}>
+              <div
+                key={index}
+                style={{
+                  margin: "2px 0",
+                  wordBreak: "break-all",
+                  overflowWrap: "break-word",
+                }}
+              >
                 {attr}
               </div>
             ))}
@@ -184,7 +223,14 @@ export const UMLClass: React.FC<UMLClassProps> = ({
           {element.methods && element.methods.length > 0 && (
             <div style={{ padding: "4px 8px" }}>
               {element.methods.map((method, index) => (
-                <div key={index} style={{ margin: "2px 0" }}>
+                <div
+                  key={index}
+                  style={{
+                    margin: "2px 0",
+                    wordBreak: "break-all",
+                    overflowWrap: "break-word",
+                  }}
+                >
                   {method}
                 </div>
               ))}

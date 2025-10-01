@@ -1,5 +1,6 @@
 // tests/setup.ts
 import { jest } from "@jest/globals";
+import "@testing-library/jest-dom";
 
 // Configuración global para pruebas
 process.env.NODE_ENV = "test";

@@ -66,7 +66,41 @@ export class InvitationModel {
     const invitation = await databaseService.findInvitationById(id);
     if (!invitation || invitation.status !== "pending") return null;
 
-    return await databaseService.updateInvitationStatus(id, "accepted", userId);
+    // Actualizar el estado de la invitación
+    const updatedInvitation = await databaseService.updateInvitationStatus(
+      id,
+      "accepted",
+      userId
+    );
+
+    // Agregar el usuario como colaborador al diagrama
+    try {
+      const diagram = await databaseService.findDiagramSnapshotByDiagramId(
+        invitation.diagramId
+      );
+      if (diagram && diagram.length > 0) {
+        const currentDiagram = diagram[0];
+        // Verificar si el usuario ya es colaborador
+        if (!currentDiagram.collaborators.includes(userId)) {
+          const updatedCollaborators = [
+            ...currentDiagram.collaborators,
+            userId,
+          ];
+          await databaseService.updateDiagramCollaborators(
+            invitation.diagramId,
+            updatedCollaborators
+          );
+          console.log(
+            `Usuario ${userId} agregado como colaborador al diagrama ${invitation.diagramId}`
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error al agregar colaborador al diagrama:", error);
+      // No fallar la aceptación de la invitación si hay error al agregar colaborador
+    }
+
+    return updatedInvitation;
   }
 
   // Rechazar invitación
@@ -74,12 +108,7 @@ export class InvitationModel {
     const invitation = await databaseService.findInvitationById(id);
     if (!invitation || invitation.status !== "pending") return null;
 
-    return await databaseService.updateInvitationStatus(
-      id,
-      "rejected",
-      undefined,
-      new Date()
-    );
+    return await databaseService.updateInvitationStatus(id, "rejected");
   }
 
   // Marcar como expirada

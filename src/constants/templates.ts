@@ -10,13 +10,11 @@ export const validateElementPosition = (
   x: number,
   y: number,
   containerWidth?: number,
-  containerHeight?: number
+  containerHeight?: number,
+  elementWidth: number = ELEMENT_DIMENSIONS.width,
+  elementHeight: number = ELEMENT_DIMENSIONS.height
 ): { x: number; y: number } => {
-  const {
-    width: elementWidth,
-    height: elementHeight,
-    margin,
-  } = ELEMENT_DIMENSIONS;
+  const margin = ELEMENT_DIMENSIONS.margin;
 
   let validatedX = x;
   let validatedY = y;

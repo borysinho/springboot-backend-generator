@@ -4,6 +4,7 @@ import { Socket } from "socket.io-client";
 import {
   OperationTracker,
   type JsonPatchOperation,
+  createInverseOperation,
 } from "../utils/operationTracker";
 
 // Re-export para compatibilidad
@@ -23,6 +24,12 @@ export function useDiagramSync(
   >("disconnected");
   const [_activeUsers, setActiveUsers] = useState<string[]>([]);
   const [operations, setOperations] = useState<JsonPatchOperation[]>([]);
+
+  // Pilas para undo/redo
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_undoStack, setUndoStack] = useState<JsonPatchOperation[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_redoStack, setRedoStack] = useState<JsonPatchOperation[]>([]);
 
   // Estado para almacenar callbacks de operaciones pendientes
   const operationCallbacks = useRef<
@@ -141,6 +148,10 @@ export function useDiagramSync(
       );
       setOperations((prev) => [newOperation, ...prev.slice(0, 19)]); // Mantener últimas 20 operaciones
 
+      // Agregar operación al undo stack y limpiar redo stack
+      setUndoStack((prev) => [...prev, newOperation]);
+      setRedoStack([]);
+
       // Enviar la operación al servidor si hay socket disponible
       if (socket && socket.connected) {
         socket.emit("diagram:operation", newOperation);
@@ -148,6 +159,47 @@ export function useDiagramSync(
     },
     [socket]
   );
+
+  const handleUndo = useCallback(() => {
+    setUndoStack((prev) => {
+      if (prev.length === 0) return prev;
+
+      const lastOperation = prev[prev.length - 1];
+      const newUndoStack = prev.slice(0, -1);
+
+      // Crear operación inversa
+      const inverseOperation = createInverseOperation(lastOperation);
+
+      // Agregar la operación original al redo stack
+      setRedoStack((redoPrev) => [...redoPrev, lastOperation]);
+
+      // Aplicar la operación inversa
+      if (socket && socket.connected) {
+        socket.emit("diagram:operation", inverseOperation);
+      }
+
+      return newUndoStack;
+    });
+  }, [socket]);
+
+  const handleRedo = useCallback(() => {
+    setRedoStack((prev) => {
+      if (prev.length === 0) return prev;
+
+      const lastOperation = prev[prev.length - 1];
+      const newRedoStack = prev.slice(0, -1);
+
+      // Agregar la operación al undo stack
+      setUndoStack((undoPrev) => [...undoPrev, lastOperation]);
+
+      // Aplicar la operación nuevamente
+      if (socket && socket.connected) {
+        socket.emit("diagram:operation", lastOperation);
+      }
+
+      return newRedoStack;
+    });
+  }, [socket]);
 
   const addOperationWithCallbacks = useCallback(
     (
@@ -348,5 +400,7 @@ export function useDiagramSync(
     trackRelationshipRemove,
     trackRelationshipUpdate,
     clearOperations,
+    handleUndo,
+    handleRedo,
   };
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import type { CustomElement, UMLRelationship, ElementType } from "../types";
+import "./css/PropertiesPanel.css";
 
 interface PropertiesPanelProps {
   selectedElement: CustomElement | UMLRelationship | null;
@@ -216,72 +217,23 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
   }
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        top: "20px",
-        right: "20px",
-        width: "320px",
-        backgroundColor: "white",
-        border: "2px solid #007bff",
-        borderRadius: "12px",
-        boxShadow: "0 8px 25px rgba(0, 123, 255, 0.15)",
-        zIndex: 1000,
-        maxHeight: "calc(100vh - 40px)",
-        overflowY: "auto",
-        overflowX: "hidden",
-        backdropFilter: "blur(10px)",
-      }}
-    >
-      <div
-        style={{
-          padding: "16px 20px",
-          borderBottom: "2px solid #e3f2fd",
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          background: "linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%)",
-        }}
-      >
-        <h3
-          style={{
-            margin: 0,
-            fontSize: "18px",
-            color: "#1976d2",
-            fontWeight: "600",
-          }}
-        >
+    <div className="properties-panel">
+      <div className="properties-header">
+        <h3 className="properties-title">
           {selectedElement && "className" in selectedElement
             ? getElementTypeLabel(selectedElement)
-            : "Etiqueta de la relación:"}
+            : "Relación"}
         </h3>
         <button
+          className="properties-close"
           onClick={onClose}
-          style={{
-            background: "none",
-            border: "none",
-            fontSize: "20px",
-            cursor: "pointer",
-            color: "#666",
-            padding: "4px",
-            borderRadius: "50%",
-            transition: "all 0.2s",
-          }}
           title="Cerrar panel"
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = "#f5f5f5";
-            e.currentTarget.style.color = "#333";
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = "transparent";
-            e.currentTarget.style.color = "#666";
-          }}
         >
           ×
         </button>
       </div>
 
-      <div style={{ padding: "20px" }}>
+      <div className="properties-content">
         {selectedElement && "className" in selectedElement ? (
           <>
             <div style={{ marginBottom: "12px" }}>
@@ -838,67 +790,11 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({
           </>
         )}
 
-        <div
-          style={{
-            marginTop: "24px",
-            display: "flex",
-            gap: "12px",
-          }}
-        >
-          <button
-            onClick={handleSave}
-            style={{
-              flex: 1,
-              padding: "12px 16px",
-              backgroundColor: "#1976d2",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer",
-              fontWeight: "600",
-              transition: "all 0.2s",
-              boxShadow: "0 2px 4px rgba(25, 118, 210, 0.2)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#1565c0";
-              e.currentTarget.style.boxShadow =
-                "0 4px 8px rgba(25, 118, 210, 0.3)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#1976d2";
-              e.currentTarget.style.boxShadow =
-                "0 2px 4px rgba(25, 118, 210, 0.2)";
-            }}
-          >
-            💾 Guardar
+        <div className="properties-actions">
+          <button className="action-button primary" onClick={handleSave}>
+            💾 Guardar Cambios
           </button>
-          <button
-            onClick={handleDelete}
-            style={{
-              flex: 1,
-              padding: "12px 16px",
-              backgroundColor: "#dc3545",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "14px",
-              cursor: "pointer",
-              fontWeight: "600",
-              transition: "all 0.2s",
-              boxShadow: "0 2px 4px rgba(220, 53, 69, 0.2)",
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.backgroundColor = "#c82333";
-              e.currentTarget.style.boxShadow =
-                "0 4px 8px rgba(220, 53, 69, 0.3)";
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = "#dc3545";
-              e.currentTarget.style.boxShadow =
-                "0 2px 4px rgba(220, 53, 69, 0.2)";
-            }}
-          >
+          <button className="action-button danger" onClick={handleDelete}>
             🗑️ Eliminar Elemento
           </button>
         </div>

@@ -1,16 +1,22 @@
 import React, { useCallback, useState, useEffect, useMemo } from "react";
 import { GraphProvider, createElements } from "@joint/react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useParams } from "react-router-dom";
 import "./App.css";
 
 // Importar tipos
 import type { CustomElement, UMLRelationship } from "./types";
+import type { DiagramData } from "./components/AIBot";
 
 // Importar constantes
 import { classTemplates, validateElementPosition } from "./constants/templates";
 
 // Importar utilidades
+import {
+  calculateElementWidth,
+  calculateElementHeight,
+} from "./utils/elementSizing";
 import { convertRelationshipToLink } from "./utils/relationshipUtils";
+import { truncateText } from "./utils/textUtils";
 
 // Importar hooks
 import { useDiagramSync } from "./hooks/useDiagramSync";
@@ -21,6 +27,10 @@ import { useNotifications } from "./hooks/useNotifications";
 import { Toolbar } from "./components/Toolbar";
 import { PropertiesPanel } from "./components/PropertiesPanel";
 import { UMLDiagram } from "./components/UMLDiagram";
+import { AIBot } from "./components/AIBot";
+import DatabaseConfigModal, {
+  type DatabaseConfig,
+} from "./components/DatabaseConfigModal";
 import Header from "./components/Header";
 import NotificationSystem from "./components/NotificationSystem";
 
@@ -31,15 +41,19 @@ const initialElements = createElements([
 // Componente principal del diagrama UML
 function App() {
   const [searchParams] = useSearchParams();
+  const { id: urlDiagramId } = useParams<{ id: string }>();
   const [diagramName, setDiagramName] = useState<string>("");
+  const [currentDiagramId, setCurrentDiagramId] = useState<string | null>(null);
   const [dynamicElements, setDynamicElements] = useState<CustomElement[]>([]);
   const [elementCounter, setElementCounter] = useState(5);
-  const [graphSessionId, setGraphSessionId] = useState(1);
+  const [graphSessionId] = useState(1);
+  const [isAIBotVisible, setIsAIBotVisible] = useState(false);
+  const [isDatabaseConfigModalOpen, setIsDatabaseConfigModalOpen] =
+    useState(false);
 
-  // Leer el nombre del diagrama de los parámetros de la URL
+  // Cargar diagrama desde BD o inicializar nuevo
   useEffect(() => {
-    const loadDiagramName = async () => {
-      const nameParam = searchParams.get("name");
+    const loadDiagram = async () => {
       const userStr = localStorage.getItem("user");
 
       if (!userStr) {
@@ -49,50 +63,100 @@ function App() {
 
       const user = JSON.parse(userStr);
 
-      if (nameParam) {
-        // Verificar si el nombre ya existe para este usuario
+      if (urlDiagramId) {
+        // Cargar diagrama existente por ID
         try {
-          const response = await fetch(
-            `/api/diagrams/check-name?name=${encodeURIComponent(
-              nameParam
-            )}&creatorId=${encodeURIComponent(user.id)}`
-          );
+          console.log("Cargando diagrama:", urlDiagramId);
+          const response = await fetch(`/api/diagrams/${urlDiagramId}`);
 
           if (response.ok) {
-            const { exists } = await response.json();
-            if (exists) {
-              alert(
-                `Ya tienes un diagrama con el nombre "${nameParam}". Por favor elige un nombre diferente.`
-              );
-              // Redirigir al dashboard para que elija otro nombre
-              window.location.href = "/";
-              return;
-            }
+            const diagram = await response.json();
+            console.log("Diagrama cargado:", diagram);
+
+            setDiagramName(diagram.name);
+            setCurrentDiagramId(urlDiagramId);
+
+            // Cargar elementos y relaciones desde el state
+            const state = diagram.state || { elements: {}, relationships: {} };
+            const elements = Object.values(state.elements || {}) as any[];
+
+            // Convertir elementos a formato del frontend
+            const loadedElements = elements.map((el: any) => ({
+              id: el.id,
+              className: el.className,
+              attributes: el.attributes,
+              methods: el.methods,
+              elementType: el.elementType,
+              stereotype: el.stereotype,
+              parentPackageId: el.parentPackageId,
+              containedElements: el.containedElements,
+              x: el.x || 0,
+              y: el.y || 0,
+              width: el.width || 200,
+              height: el.height || 120,
+            }));
+
+            // Convertir relaciones a formato del frontend
+            const relationships = Object.values(
+              state.relationships || {}
+            ) as any[];
+            const loadedRelationships = relationships.map((rel: any) => ({
+              id: rel.id,
+              source: rel.source,
+              target: rel.target,
+              relationship: rel.relationship,
+              label: rel.label,
+              sourceMultiplicity: rel.sourceMultiplicity,
+              targetMultiplicity: rel.targetMultiplicity,
+              sourceRole: rel.sourceRole,
+              targetRole: rel.targetRole,
+            }));
+
+            setDynamicElements(loadedElements);
+            setDynamicLinks(loadedRelationships);
+
+            // Actualizar el contador de elementos para evitar conflictos de IDs
+            const maxElementId = Math.max(
+              ...loadedElements.map((el) => {
+                const numId = parseInt(el.id);
+                return isNaN(numId) ? 0 : numId;
+              }),
+              4 // Mínimo 5 (contador inicia en 5)
+            );
+            setElementCounter(maxElementId + 1);
+
+            console.log("Elementos cargados:", loadedElements.length);
+            console.log("Relaciones cargadas:", loadedRelationships.length);
+            console.log(
+              "Contador de elementos actualizado a:",
+              maxElementId + 1
+            );
+
+            // Inicializar el historial con el estado cargado
+            setTimeout(() => {}, 100);
+          } else if (response.status === 404) {
+            alert("Diagrama no encontrado");
+            window.location.href = "/";
+            return;
+          } else {
+            throw new Error("Error cargando diagrama");
           }
         } catch (error) {
-          console.error("Error checking diagram name:", error);
+          console.error("Error loading diagram:", error);
+          alert("Error al cargar el diagrama");
+          window.location.href = "/";
+          return;
         }
-
-        setDiagramName(nameParam);
       } else {
-        // Si no hay nombre, pedirlo al usuario
-        let name = prompt("Ingresa el nombre del diagrama:");
-        let isValidName = false;
+        // Flujo anterior para diagramas sin ID (por compatibilidad)
+        const nameParam = searchParams.get("name");
 
-        while (!isValidName && name !== null) {
-          if (!name || name.trim() === "") {
-            alert("El nombre del diagrama es obligatorio");
-            name = prompt("Ingresa el nombre del diagrama:");
-            continue;
-          }
-
-          name = name.trim();
-
+        if (nameParam) {
+          // Verificar si el nombre ya existe
           try {
-            // Verificar si el nombre ya existe
             const response = await fetch(
               `/api/diagrams/check-name?name=${encodeURIComponent(
-                name
+                nameParam
               )}&creatorId=${encodeURIComponent(user.id)}`
             );
 
@@ -100,42 +164,75 @@ function App() {
               const { exists } = await response.json();
               if (exists) {
                 alert(
-                  `Ya tienes un diagrama con el nombre "${name}". Por favor elige un nombre diferente.`
+                  `Ya tienes un diagrama con el nombre "${nameParam}". Por favor elige un nombre diferente.`
                 );
-                name = prompt("Ingresa el nombre del diagrama:");
-                continue;
+                window.location.href = "/";
+                return;
               }
             }
           } catch (error) {
             console.error("Error checking diagram name:", error);
-            alert("Error al verificar el nombre del diagrama");
-            name = prompt("Ingresa el nombre del diagrama:");
-            continue;
           }
 
-          isValidName = true;
-        }
-
-        if (name && name.trim()) {
-          setDiagramName(name.trim());
-          // Actualizar la URL con el nombre
-          const newSearchParams = new URLSearchParams(searchParams);
-          newSearchParams.set("name", name.trim());
-          window.history.replaceState(
-            null,
-            "",
-            `?${newSearchParams.toString()}`
-          );
+          setDiagramName(nameParam);
+          // Generar diagramId para nuevos diagramas
+          const newDiagramId = `diagram-${Date.now()}-${user.id}`;
+          setCurrentDiagramId(newDiagramId);
         } else {
-          // Si no se proporciona nombre, redirigir al dashboard
-          window.location.href = "/";
-          return;
+          // Pedir nombre y crear nuevo diagrama
+          let name = prompt("Ingresa el nombre del diagrama:");
+          let isValidName = false;
+
+          while (!isValidName && name !== null) {
+            if (!name || name.trim() === "") {
+              alert("El nombre del diagrama es obligatorio");
+              name = prompt("Ingresa el nombre del diagrama:");
+              continue;
+            }
+
+            name = name.trim();
+
+            try {
+              const response = await fetch(
+                `/api/diagrams/check-name?name=${encodeURIComponent(
+                  name
+                )}&creatorId=${encodeURIComponent(user.id)}`
+              );
+
+              if (response.ok) {
+                const { exists } = await response.json();
+                if (exists) {
+                  alert(
+                    `Ya tienes un diagrama con el nombre "${name}". Por favor elige un nombre diferente.`
+                  );
+                  name = prompt("Ingresa el nombre del diagrama:");
+                  continue;
+                }
+              }
+            } catch (error) {
+              console.error("Error checking diagram name:", error);
+              alert("Error al verificar el nombre del diagrama");
+              name = prompt("Ingresa el nombre del diagrama:");
+              continue;
+            }
+
+            isValidName = true;
+          }
+
+          if (name && name.trim()) {
+            setDiagramName(name.trim());
+            const newDiagramId = `diagram-${Date.now()}-${user.id}`;
+            setCurrentDiagramId(newDiagramId);
+          } else {
+            window.location.href = "/";
+            return;
+          }
         }
       }
     };
 
-    loadDiagramName();
-  }, [searchParams]);
+    loadDiagram();
+  }, [urlDiagramId, searchParams]);
 
   // Configurar conexión Socket.IO usando el hook
   const { socket, isConnected } = useSocket();
@@ -144,13 +241,19 @@ function App() {
   const { notifications, addNotification, removeNotification } =
     useNotifications();
 
-  // Actualizar graphSessionId cuando se conecte
+  // Actualizar graphSessionId solo cuando cambie el diagrama actual
   useEffect(() => {
-    if (isConnected) {
+    if (isConnected && currentDiagramId) {
       console.log("📡 Conectado al servidor para colaboración en tiempo real");
-      setGraphSessionId((prev) => prev + 1);
+
+      // Unirse al diagrama actual
+      if (socket) {
+        socket.emit("diagram:join", currentDiagramId);
+        console.log(`Unido al diagrama: ${currentDiagramId}`);
+      }
+      // No incrementar graphSessionId aquí para evitar recrear el grafo
     }
-  }, [isConnected]);
+  }, [isConnected, socket, currentDiagramId]);
 
   const [selectedElement, setSelectedElement] = useState<
     CustomElement | UMLRelationship | null
@@ -171,10 +274,381 @@ function App() {
     trackRelationshipAdd,
     trackRelationshipRemove,
     trackRelationshipUpdate,
+    handleUndo,
+    handleRedo,
   } = useDiagramSync(
     socket || undefined,
     diagramName || "temp-diagram",
     addNotification
+  );
+
+  // Función para guardar el diagrama
+  const handleSaveDiagram = useCallback(async () => {
+    try {
+      const userStr = localStorage.getItem("user");
+      if (!userStr) {
+        addNotification(
+          "error",
+          "Error de Autenticación",
+          "No se encontró información del usuario. Por favor, inicia sesión nuevamente.",
+          false
+        );
+        return;
+      }
+
+      const user = JSON.parse(userStr);
+
+      if (!diagramName) {
+        addNotification(
+          "error",
+          "Nombre del Diagrama Requerido",
+          "El diagrama debe tener un nombre para poder guardarse.",
+          false
+        );
+        return;
+      }
+
+      // Construir el estado del diagrama
+      const diagramState = {
+        elements: {} as Record<string, CustomElement>,
+        relationships: {} as Record<string, UMLRelationship>,
+        version: 1,
+        lastModified: Date.now(),
+      };
+
+      // Agregar elementos al estado
+      [...initialElements, ...dynamicElements].forEach((element) => {
+        diagramState.elements[element.id] = {
+          id: element.id,
+          className: element.className,
+          attributes: element.attributes || [],
+          methods: element.methods || [],
+          elementType: element.elementType,
+          stereotype: element.stereotype,
+          parentPackageId: element.parentPackageId,
+          containedElements: element.containedElements || [],
+          x: element.x,
+          y: element.y,
+          width: element.width,
+          height: element.height,
+        };
+      });
+
+      // Agregar relaciones al estado
+      dynamicLinks.forEach((relationship) => {
+        diagramState.relationships[relationship.id] = {
+          id: relationship.id,
+          source: relationship.source,
+          target: relationship.target,
+          relationship: relationship.relationship,
+          label: relationship.label,
+          sourceMultiplicity: relationship.sourceMultiplicity,
+          targetMultiplicity: relationship.targetMultiplicity,
+          sourceRole: relationship.sourceRole,
+          targetRole: relationship.targetRole,
+        };
+      });
+
+      // Preparar los datos para enviar
+      const isUpdate = !!currentDiagramId;
+      const diagramData = {
+        ...(isUpdate
+          ? {}
+          : {
+              diagramId: currentDiagramId || `diagram-${Date.now()}-${user.id}`,
+            }),
+        name: diagramName,
+        description: `Diagrama UML creado por ${user.name || user.email}`,
+        creatorId: user.id,
+        collaborators: [],
+        state: diagramState,
+        isPublic: false,
+        tags: [],
+      };
+
+      console.log(
+        `${isUpdate ? "Actualizando" : "Guardando"} diagrama:`,
+        diagramData
+      );
+
+      // Enviar a la API
+      const url = isUpdate
+        ? `/api/diagrams/${currentDiagramId}`
+        : "/api/diagrams";
+      const method = isUpdate ? "PUT" : "POST";
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(diagramData),
+      });
+
+      if (response.ok) {
+        const savedDiagram = await response.json();
+        console.log("Diagrama guardado exitosamente:", savedDiagram);
+
+        // Si es creación, actualizar el currentDiagramId
+        if (!isUpdate) {
+          setCurrentDiagramId(savedDiagram.diagramId);
+        }
+
+        addNotification(
+          "success",
+          "Diagrama Guardado",
+          `El diagrama "${diagramName}" se ha guardado exitosamente.`,
+          true,
+          3000
+        );
+      } else {
+        const errorText = await response.text();
+        console.error("Error al guardar diagrama:", response.status, errorText);
+
+        addNotification(
+          "error",
+          "Error al Guardar",
+          `No se pudo guardar el diagrama. Error: ${errorText}`,
+          false
+        );
+      }
+    } catch (error) {
+      console.error("Error inesperado al guardar diagrama:", error);
+
+      addNotification(
+        "error",
+        "Error Inesperado",
+        "Ocurrió un error inesperado al guardar el diagrama. Por favor, inténtalo de nuevo.",
+        false
+      );
+    }
+  }, [
+    diagramName,
+    dynamicElements,
+    dynamicLinks,
+    addNotification,
+    currentDiagramId,
+  ]);
+
+  // Función para imprimir
+  const handlePrint = useCallback(() => {
+    try {
+      window.print();
+      addNotification(
+        "success",
+        "Impresión Iniciada",
+        "Se ha abierto el diálogo de impresión.",
+        true,
+        3000
+      );
+    } catch (error) {
+      console.error("Error al imprimir:", error);
+      addNotification(
+        "error",
+        "Error de Impresión",
+        "No se pudo iniciar la impresión. Por favor, inténtalo de nuevo.",
+        false
+      );
+    }
+  }, [addNotification]);
+
+  // Función para exportar
+  const handleExport = useCallback(async () => {
+    try {
+      // Mostrar diálogo de selección
+      const exportType = window.prompt(
+        "Seleccione el formato de exportación:\n\n1. JSON (datos del diagrama)\n2. SVG (imagen vectorial)\n\nIngrese 1 o 2:",
+        "1"
+      );
+
+      if (!exportType || !["1", "2"].includes(exportType.trim())) {
+        addNotification(
+          "warning",
+          "Exportación Cancelada",
+          "Selección inválida. La exportación ha sido cancelada.",
+          true,
+          3000
+        );
+        return;
+      }
+
+      const isJSON = exportType.trim() === "1";
+      const diagramIdToExport = currentDiagramId || urlDiagramId;
+
+      if (!diagramIdToExport) {
+        addNotification(
+          "error",
+          "Error de Exportación",
+          "No se pudo identificar el diagrama actual.",
+          false
+        );
+        return;
+      }
+
+      // Llamar al endpoint correspondiente
+      const endpoint = isJSON
+        ? `/api/diagrams/${diagramIdToExport}/export/json`
+        : `/api/diagrams/${diagramIdToExport}/export/svg`;
+
+      const response = await fetch(endpoint);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Error ${response.status}: ${errorText}`);
+      }
+
+      // Crear blob y descargar
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+
+      const fileName = isJSON
+        ? `${diagramName || "diagrama"}_${
+            new Date().toISOString().split("T")[0]
+          }.json`
+        : `${diagramName || "diagrama"}_${
+            new Date().toISOString().split("T")[0]
+          }.svg`;
+
+      const linkElement = document.createElement("a");
+      linkElement.href = url;
+      linkElement.download = fileName;
+      document.body.appendChild(linkElement);
+      linkElement.click();
+      document.body.removeChild(linkElement);
+
+      // Limpiar URL del objeto
+      window.URL.revokeObjectURL(url);
+
+      addNotification(
+        "success",
+        "Exportación Completada",
+        `El diagrama se ha exportado como "${fileName}".`,
+        true,
+        3000
+      );
+    } catch (error) {
+      console.error("Error al exportar:", error);
+      addNotification(
+        "error",
+        "Error de Exportación",
+        "No se pudo exportar el diagrama. Por favor, inténtalo de nuevo.",
+        false
+      );
+    }
+  }, [diagramName, currentDiagramId, urlDiagramId, addNotification]);
+
+  // Función para generar backend
+  const handleGenerateBackend = useCallback(() => {
+    setIsDatabaseConfigModalOpen(true);
+  }, []);
+
+  // Función para confirmar generación de backend con configuración de BD
+  const handleConfirmBackendGeneration = useCallback(
+    async (dbConfig: DatabaseConfig) => {
+      try {
+        setIsDatabaseConfigModalOpen(false);
+
+        addNotification(
+          "info",
+          "Generando Backend",
+          "Iniciando transformación del diagrama a modelo físico...",
+          true,
+          2000
+        );
+
+        // Construir el estado del diagrama
+        const diagramState = {
+          elements: {} as Record<string, CustomElement>,
+          relationships: {} as Record<string, UMLRelationship>,
+          version: 1,
+          lastModified: Date.now(),
+        };
+
+        // Agregar elementos al estado
+        [...initialElements, ...dynamicElements].forEach((element) => {
+          diagramState.elements[element.id] = {
+            id: element.id,
+            className: element.className,
+            attributes: element.attributes || [],
+            methods: element.methods || [],
+            elementType: element.elementType,
+            stereotype: element.stereotype,
+            parentPackageId: element.parentPackageId,
+            containedElements: element.containedElements || [],
+            x: element.x,
+            y: element.y,
+            width: element.width,
+            height: element.height,
+          };
+        });
+
+        // Agregar relaciones al estado
+        dynamicLinks.forEach((relationship) => {
+          diagramState.relationships[relationship.id] = {
+            id: relationship.id,
+            source: relationship.source,
+            target: relationship.target,
+            relationship: relationship.relationship,
+            label: relationship.label,
+            sourceMultiplicity: relationship.sourceMultiplicity,
+            targetMultiplicity: relationship.targetMultiplicity,
+            sourceRole: relationship.sourceRole,
+            targetRole: relationship.targetRole,
+          };
+        });
+
+        // Enviar el diagrama al servidor para transformación y generación
+        const response = await fetch("/api/diagrams/generate-backend", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            diagramState,
+            diagramName: diagramName || "generated-backend",
+            databaseConfig: dbConfig,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          throw new Error(
+            errorData.error || `Error del servidor: ${response.status}`
+          );
+        }
+
+        // El servidor devuelve un archivo ZIP directamente
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const linkElement = document.createElement("a");
+        linkElement.href = url;
+        linkElement.download = `${diagramName || "backend"}.zip`;
+        document.body.appendChild(linkElement);
+        linkElement.click();
+        document.body.removeChild(linkElement);
+        window.URL.revokeObjectURL(url);
+
+        addNotification(
+          "success",
+          "Backend Generado",
+          `El backend Spring Boot "${
+            diagramName || "backend"
+          }.zip" se ha descargado exitosamente.`,
+          true,
+          5000
+        );
+      } catch (error) {
+        console.error("Error al generar backend:", error);
+        addNotification(
+          "error",
+          "Error en Generación",
+          `No se pudo generar el backend: ${
+            error instanceof Error ? error.message : "Error desconocido"
+          }`,
+          false
+        );
+      }
+    },
+    [diagramName, dynamicElements, dynamicLinks, addNotification]
   );
 
   const handleDragStart = useCallback(
@@ -215,6 +689,20 @@ function App() {
       const templateData =
         classTemplates[template as keyof typeof classTemplates];
 
+      // Solicitar nombre para elementos estructurales
+      const structuralTypes = ["class", "interface", "enumeration", "package"];
+      let elementName = templateData.className;
+      if (structuralTypes.includes(template)) {
+        const name = prompt("Ingresa el nombre del elemento:");
+        if (name === null) return; // Usuario canceló
+        const trimmedName = name.trim();
+        if (trimmedName === "") {
+          alert("El nombre no puede estar vacío.");
+          return;
+        }
+        elementName = trimmedName;
+      }
+
       // Usar posición proporcionada o calcular automáticamente
       let newX: number, newY: number;
 
@@ -226,11 +714,26 @@ function App() {
         console.log("Posición original del drop:", x, y);
         console.log("Posición centrada:", centeredX, centeredY);
 
+        const elementWidth = calculateElementWidth({
+          className: elementName,
+          attributes: templateData.attributes,
+          methods: templateData.methods,
+          elementType: templateData.elementType,
+        });
+        const elementHeight = calculateElementHeight({
+          className: elementName,
+          attributes: templateData.attributes,
+          methods: templateData.methods,
+          elementType: templateData.elementType,
+        });
+
         const validatedPosition = validateElementPosition(
           centeredX,
           centeredY,
           containerWidth,
-          containerHeight
+          containerHeight,
+          elementWidth,
+          elementHeight
         );
 
         console.log("Posición validada:", validatedPosition);
@@ -247,31 +750,46 @@ function App() {
         newY = maxY > 200 ? 50 : maxY + 170;
 
         // Validar límites para posición automática
+        const elementWidth = calculateElementWidth({
+          className: elementName,
+          attributes: templateData.attributes,
+          methods: templateData.methods,
+          elementType: templateData.elementType,
+        });
+        const elementHeight = calculateElementHeight({
+          className: elementName,
+          attributes: templateData.attributes,
+          methods: templateData.methods,
+          elementType: templateData.elementType,
+        });
+
         const validatedPosition = validateElementPosition(
           newX,
           newY,
           containerWidth,
-          containerHeight
+          containerHeight,
+          elementWidth,
+          elementHeight
         );
 
         newX = validatedPosition.x;
         newY = validatedPosition.y;
 
         // Si se sale por el lado derecho, empezar nueva fila
-        if (containerWidth && newX + 200 + 20 > containerWidth) {
+        if (containerWidth && newX + elementWidth + 20 > containerWidth) {
           newX = 20;
-          newY = newY + 120 + 20;
+          newY = newY + elementHeight + 20;
         }
 
         // Si se sale por abajo, reiniciar desde arriba
-        if (containerHeight && newY + 120 + 20 > containerHeight) {
+        if (containerHeight && newY + elementHeight + 20 > containerHeight) {
           newY = 20;
         }
       }
 
       const newElement = {
         id: elementCounter.toString(),
-        className: templateData.className,
+        className: elementName,
         attributes: [...templateData.attributes],
         methods: [...templateData.methods],
         elementType: templateData.elementType,
@@ -280,40 +798,70 @@ function App() {
         }),
         x: newX,
         y: newY,
-        width: 200,
-        height: 120,
+        width: calculateElementWidth({
+          className: elementName,
+          attributes: templateData.attributes,
+          methods: templateData.methods,
+          elementType: templateData.elementType,
+        }),
+        height: calculateElementHeight({
+          className: elementName,
+          attributes: templateData.attributes,
+          methods: templateData.methods,
+          elementType: templateData.elementType,
+        }),
       };
 
-      // Incrementar contador inmediatamente para evitar conflictos de IDs
-      setElementCounter((prev) => prev + 1);
+      console.log(
+        "Creando elemento con ID:",
+        newElement.id,
+        "Contador actual:",
+        elementCounter
+      );
 
-      // Enviar operación con callbacks para confirmación/rechazo
+      // Incrementar contador inmediatamente para evitar conflictos de IDs
+      setElementCounter((prev) => {
+        const newCounter = prev + 1;
+        console.log("Incrementando contador de", prev, "a", newCounter);
+        return newCounter;
+      });
+
+      // Agregar elemento inmediatamente al estado local para visualización inmediata
+      setDynamicElements((prev) => [...prev, newElement]);
+
+      // Mostrar notificación de éxito inmediata
+      addNotification(
+        "success",
+        "Elemento Agregado",
+        `"${newElement.className}" (${newElement.elementType}) se agregó correctamente al diagrama.`,
+        true, // Auto-close después de 3 segundos
+        3000
+      );
+
+      // Enviar operación con callbacks para sincronización
       trackElementAddWithCallbacks(
         newElement,
-        // Callback de confirmación - agregar elemento a la UI
+        // Callback de confirmación - operación exitosa, no hacer nada adicional
         () => {
           console.log(
-            "✅ Operación confirmada, agregando elemento a la UI:",
-            newElement.className
-          );
-          setDynamicElements((prev) => [...prev, newElement]);
-
-          // Mostrar notificación de éxito
-          addNotification(
-            "success",
-            "Elemento Agregado",
-            `"${newElement.className}" (${newElement.elementType}) se agregó correctamente al diagrama.`,
-            true, // Auto-close después de 3 segundos
-            3000
+            "✅ Operación confirmada para elemento:",
+            newElement.className,
+            "ID:",
+            newElement.id
           );
         },
-        // Callback de rechazo - mostrar mensaje (el hook ya muestra notificación)
+        // Callback de rechazo - remover elemento del estado local
         (_, reason) => {
           console.log(
-            "❌ Operación rechazada, elemento NO agregado:",
+            "❌ Operación rechazada, removiendo elemento:",
             newElement.className,
             "razón:",
             reason
+          );
+
+          // Remover elemento del estado local
+          setDynamicElements((prev) =>
+            prev.filter((el) => el.id !== newElement.id)
           );
 
           // Agregar notificación específica para elemento no agregado
@@ -334,6 +882,179 @@ function App() {
       trackElementAddWithCallbacks,
       addNotification,
     ]
+  );
+
+  // Funciones para el bot de IA
+  const handleAICreateClass = useCallback(
+    (classData: {
+      className: string;
+      attributes: string[];
+      methods: string[];
+      stereotype?: string;
+    }) => {
+      // Crear una clase usando los datos de la IA
+      const newElement: CustomElement = {
+        id: elementCounter.toString(),
+        className: classData.className,
+        attributes: classData.attributes || [],
+        methods: classData.methods || [],
+        elementType: "class",
+        stereotype: classData.stereotype,
+        x: Math.random() * 400 + 50,
+        y: Math.random() * 300 + 50,
+        width: 200,
+        height: 120,
+      };
+
+      setElementCounter((prev) => prev + 1);
+      setDynamicElements((prev) => [...prev, newElement]);
+
+      addNotification(
+        "success",
+        "Clase Creada por IA",
+        `La clase "${classData.className}" se creó exitosamente.`,
+        true,
+        3000
+      );
+    },
+    [elementCounter, addNotification]
+  );
+
+  const handleAICreateRelationship = useCallback(
+    (relationshipData: {
+      relationshipType: string;
+      sourceClass: string;
+      targetClass: string;
+      multiplicity: { source: string; target: string };
+      description: string;
+    }) => {
+      // Buscar los elementos por nombre
+      const sourceElement = dynamicElements.find(
+        (el) => el.className === relationshipData.sourceClass
+      );
+      const targetElement = dynamicElements.find(
+        (el) => el.className === relationshipData.targetClass
+      );
+
+      if (!sourceElement || !targetElement) {
+        addNotification(
+          "error",
+          "Error en Relación IA",
+          "No se encontraron las clases especificadas en el diagrama.",
+          false
+        );
+        return;
+      }
+
+      // Crear la relación
+      const newLink: UMLRelationship = {
+        id: `link_${Date.now()}`,
+        source: sourceElement.id,
+        target: targetElement.id,
+        relationship:
+          relationshipData.relationshipType as UMLRelationship["relationship"],
+        sourceMultiplicity: relationshipData.multiplicity?.source || "1",
+        targetMultiplicity: relationshipData.multiplicity?.target || "1",
+        label: truncateText(relationshipData.description || "", 10),
+      };
+
+      // Agregar el link (necesitas implementar esta lógica)
+      console.log("Relación IA creada:", newLink);
+
+      addNotification(
+        "success",
+        "Relación Creada por IA",
+        `Relación ${relationshipData.relationshipType} entre ${relationshipData.sourceClass} y ${relationshipData.targetClass} creada.`,
+        true,
+        3000
+      );
+    },
+    [dynamicElements, addNotification]
+  );
+
+  const handleAIGenerateDiagram = useCallback(
+    (diagramData: DiagramData) => {
+      // Crear múltiples clases y relaciones
+      let newCounter = elementCounter;
+      const newElements: CustomElement[] = [];
+      const newRelationships: UMLRelationship[] = [];
+
+      // Crear clases
+      diagramData.classes?.forEach((classData, index) => {
+        const newElement: CustomElement = {
+          id: newCounter.toString(),
+          className: classData.className,
+          attributes: classData.attributes || [],
+          methods: classData.methods || [],
+          elementType: "class",
+          stereotype: classData.stereotype,
+          x: (index % 3) * 250 + 50,
+          y: Math.floor(index / 3) * 200 + 50,
+          width: calculateElementWidth({
+            className: classData.className,
+            attributes: classData.attributes || [],
+            methods: classData.methods || [],
+            elementType: "class",
+            stereotype: classData.stereotype,
+          }),
+          height: calculateElementHeight({
+            className: classData.className,
+            attributes: classData.attributes || [],
+            methods: classData.methods || [],
+            elementType: "class",
+            stereotype: classData.stereotype,
+          }),
+        };
+        newElements.push(newElement);
+        newCounter++;
+      });
+
+      // Crear mapa de nombres de clases a IDs para las relaciones
+      const classNameToIdMap = new Map<string, string>();
+      newElements.forEach((element) => {
+        classNameToIdMap.set(element.className, element.id);
+      });
+
+      // Crear relaciones
+      diagramData.relationships?.forEach((relationshipData) => {
+        const sourceId = classNameToIdMap.get(relationshipData.sourceClass);
+        const targetId = classNameToIdMap.get(relationshipData.targetClass);
+
+        if (sourceId && targetId) {
+          const newRelationship: UMLRelationship = {
+            id: `ai-link-${Date.now()}-${Math.random()
+              .toString(36)
+              .substr(2, 9)}`,
+            source: sourceId,
+            target: targetId,
+            relationship:
+              relationshipData.relationshipType as UMLRelationship["relationship"],
+            label: truncateText(
+              relationshipData.description || relationshipData.relationshipType,
+              10
+            ),
+            sourceMultiplicity: relationshipData.multiplicity?.source,
+            targetMultiplicity: relationshipData.multiplicity?.target,
+          };
+          newRelationships.push(newRelationship);
+        }
+      });
+
+      setElementCounter(newCounter);
+      setDynamicElements((prev) => [...prev, ...newElements]);
+      setDynamicLinks((prev) => [...prev, ...newRelationships]);
+
+      addNotification(
+        "success",
+        "Diagrama Generado por IA",
+        `Se crearon ${diagramData.classes?.length || 0} clases y ${
+          diagramData.relationships?.length || 0
+        } relaciones exitosamente.`,
+        true,
+        3000
+      );
+    },
+    [elementCounter, addNotification]
   );
 
   const handleSelectElement = useCallback(
@@ -358,10 +1079,11 @@ function App() {
                 target: element.id,
                 relationship:
                   relationshipMode as UMLRelationship["relationship"],
-                label: relationshipMode,
+                label: truncateText(relationshipMode, 10),
               };
 
               setDynamicLinks((prev) => [...prev, newRelationship]);
+
               // El grafo se recrea automáticamente cuando cambian las dynamicLinks
 
               // Trackear la creación de la relación
@@ -621,6 +1343,15 @@ function App() {
     [dynamicElements]
   );
 
+  // Debug: Log cuando cambie dynamicElements
+  useEffect(() => {
+    console.log(
+      "🔄 dynamicElements cambió:",
+      dynamicElements.length,
+      dynamicElements.map((el) => ({ id: el.id, name: el.className }))
+    );
+  }, [dynamicElements]);
+
   // Crear elementos JointJS vacíos para que JointJS sepa de su existencia (solo para conexiones)
   const jointElements = useMemo(
     () =>
@@ -643,6 +1374,7 @@ function App() {
     allElements.forEach((element) => {
       map.set(element.id, element);
     });
+    console.log("📋 elementMap actualizado:", map.size, "elementos");
     return map;
   }, [allElements]);
 
@@ -670,6 +1402,8 @@ function App() {
         }
         operations={operations}
         socket={socket || undefined}
+        onSave={handleSaveDiagram}
+        diagramName={diagramName}
       />
 
       {/* Sistema de notificaciones */}
@@ -680,24 +1414,7 @@ function App() {
 
       {/* Overlay de instrucciones para modo relación */}
       {relationshipMode && (
-        <div
-          style={{
-            position: "fixed",
-            top: "80px", // Debajo del header
-            left: "50%",
-            transform: "translateX(-50%)",
-            backgroundColor: "#FFF3CD",
-            border: "1px solid #FFEAA7",
-            borderRadius: "4px",
-            padding: "8px 12px",
-            color: "#856404",
-            fontSize: "14px",
-            zIndex: 1000,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
-            maxWidth: "500px",
-            textAlign: "center",
-          }}
-        >
+        <div className="relationship-overlay">
           <strong>Modo Relación:</strong> Creando {relationshipMode}.
           {firstSelectedElement
             ? ` Origen: "${firstSelectedElement.className}". Haz click en el elemento destino.`
@@ -723,58 +1440,66 @@ function App() {
         </div>
       )}
 
-      <div
-        style={{
-          height: "calc(100vh - 35px)",
-          display: "flex",
-          gap: "10px",
-          alignItems: "stretch",
-          padding: "5px",
-          paddingTop: "75px",
-          boxSizing: "border-box",
-        }}
-      >
-        <Toolbar onDragStart={handleDragStart} onClick={handleAddElement} />
+      <div className="app-content">
+        <Toolbar
+          onDragStart={handleDragStart}
+          onClick={handleAddElement}
+          onAIBotClick={() => setIsAIBotVisible(true)}
+          onUndo={handleUndo}
+          onRedo={handleRedo}
+          onPrint={handlePrint}
+          onExport={handleExport}
+          onGenerateBackend={handleGenerateBackend}
+        />
 
-        <div
-          style={{
-            flex: 1,
-            display: "flex",
-            flexDirection: "column",
-            minHeight: 0,
-          }}
-        >
-          <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-            <div style={{ flex: 1, position: "relative" }}>
-              <GraphProvider
-                key={graphKey}
-                initialElements={jointElements}
-                initialLinks={allLinks}
-              >
-                <UMLDiagram
-                  onAddElement={handleAddElement}
-                  onSelectElement={handleSelectElement}
-                  onElementMove={handleElementMove}
-                  elementMap={elementMap}
-                  relationships={dynamicLinks}
-                />
-              </GraphProvider>
-            </div>
-
-            {selectedElement && (
-              <PropertiesPanel
-                selectedElement={selectedElement}
-                onUpdateElement={handleUpdateElement}
-                onUpdateRelationship={handleUpdateRelationship}
-                onDeleteElement={handleDeleteElement}
-                onAssignToPackage={handleAssignToPackage}
-                allElements={[...initialElements, ...dynamicElements]}
-                onClose={() => handleSelectElement(null)}
-              />
-            )}
-          </div>
+        <div className="diagram-container">
+          <GraphProvider
+            key={graphKey}
+            initialElements={jointElements}
+            initialLinks={allLinks as any}
+          >
+            <UMLDiagram
+              onAddElement={handleAddElement}
+              onSelectElement={handleSelectElement}
+              onElementMove={handleElementMove}
+              elementMap={elementMap}
+              relationships={dynamicLinks}
+            />
+          </GraphProvider>
         </div>
+
+        {selectedElement && (
+          <div className="properties-container">
+            <PropertiesPanel
+              selectedElement={selectedElement}
+              onUpdateElement={handleUpdateElement}
+              onUpdateRelationship={handleUpdateRelationship}
+              onDeleteElement={handleDeleteElement}
+              onAssignToPackage={handleAssignToPackage}
+              allElements={[...initialElements, ...dynamicElements]}
+              onClose={() => handleSelectElement(null)}
+            />
+          </div>
+        )}
       </div>
+
+      {/* Bot de IA */}
+      <AIBot
+        onCreateClass={handleAICreateClass}
+        onCreateRelationship={handleAICreateRelationship}
+        onGenerateDiagram={handleAIGenerateDiagram}
+        existingClasses={dynamicElements.map((el) => el.className)}
+        isVisible={isAIBotVisible}
+        onClose={() => setIsAIBotVisible(false)}
+      />
+
+      {/* Modal de configuración de base de datos */}
+      <DatabaseConfigModal
+        isOpen={isDatabaseConfigModalOpen}
+        onClose={() => setIsDatabaseConfigModalOpen(false)}
+        onConfirm={handleConfirmBackendGeneration}
+        diagramName={diagramName}
+      />
     </div>
   );
 }

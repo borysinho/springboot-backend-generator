@@ -1,5 +1,5 @@
 import React from "react";
-import "./NotificationSystem.css";
+import "./css/NotificationSystem.css";
 
 export interface Notification {
   id: string;

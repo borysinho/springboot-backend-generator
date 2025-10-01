@@ -38,3 +38,33 @@ export interface JsonPatchOperation {
   sequenceNumber: number;
   description: string;
 }
+
+// Función para crear la operación inversa
+export const createInverseOperation = (
+  operation: JsonPatchOperation
+): JsonPatchOperation => {
+  switch (operation.op) {
+    case "add":
+      return {
+        ...operation,
+        op: "remove",
+        value: undefined,
+        description: `Deshacer: ${operation.description}`,
+      };
+    case "remove":
+      return {
+        ...operation,
+        op: "add",
+        description: `Deshacer: ${operation.description}`,
+      };
+    case "replace":
+      // Para replace necesitamos el valor anterior, pero no lo tenemos
+      // Por simplicidad, devolver la operación como está
+      return {
+        ...operation,
+        description: `Deshacer: ${operation.description}`,
+      };
+    default:
+      return operation;
+  }
+};

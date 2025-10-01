@@ -1,5 +1,6 @@
 import React from "react";
 import { classTemplates, toolbarGroups } from "../constants/templates";
+import "./css/Toolbar.css";
 
 interface ToolbarProps {
   onDragStart: (
@@ -7,9 +8,24 @@ interface ToolbarProps {
     template: keyof typeof classTemplates
   ) => void;
   onClick?: (template: keyof typeof classTemplates) => void;
+  onAIBotClick?: () => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onPrint?: () => void;
+  onExport?: () => void;
+  onGenerateBackend?: () => void;
 }
 
-export const Toolbar: React.FC<ToolbarProps> = ({ onDragStart, onClick }) => {
+export const Toolbar: React.FC<ToolbarProps> = ({
+  onDragStart,
+  onClick,
+  onAIBotClick,
+  onUndo,
+  onRedo,
+  onPrint,
+  onExport,
+  onGenerateBackend,
+}) => {
   const relationshipTypes = [
     "association",
     "aggregation",
@@ -18,126 +34,126 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onDragStart, onClick }) => {
     "dependency",
     "realization",
   ];
-  return (
-    <div
-      style={{
-        width: "180px",
-        height: "100%",
-        background: "#f8f9fa",
-        border: "1px solid #dee2e6",
-        borderRadius: "6px",
-        paddingLeft: "8px",
-        paddingRight: "8px",
-        display: "flex",
-        flexDirection: "column",
-        gap: "8px",
-        boxShadow: "2px 0 5px rgba(0,0,0,0.1)",
-        overflowY: "auto",
-        flexShrink: 0,
-      }}
-    >
-      <h3
-        style={{
-          margin: "0 0 6px 0",
-          fontSize: "14px",
-          color: "#495057",
-          textAlign: "center",
-          borderBottom: "1px solid #dee2e6",
-          paddingBottom: "6px",
-        }}
-      >
-        🛠️ UML
-      </h3>
 
-      {toolbarGroups.map((group, groupIndex) => (
-        <div key={group.title}>
-          <h4
-            style={{
-              margin: "0 0 4px 0",
-              fontSize: "11px",
-              color: "#6c757d",
-              fontWeight: "600",
-              textTransform: "uppercase",
-              letterSpacing: "0.3px",
-              borderBottom: "1px solid #e9ecef",
-              paddingBottom: "2px",
-            }}
-          >
-            {group.title}
-          </h4>
-          <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-            {group.items.map((item) => {
-              const isRelationship = relationshipTypes.includes(item.key);
-              return (
-                <div
-                  key={item.key}
-                  draggable={!isRelationship}
-                  onDragStart={
-                    !isRelationship
-                      ? (e) =>
-                          onDragStart(
-                            e,
-                            item.key as keyof typeof classTemplates
-                          )
-                      : undefined
-                  }
-                  onClick={
-                    isRelationship && onClick
-                      ? () => onClick(item.key as keyof typeof classTemplates)
-                      : undefined
-                  }
-                  style={{
-                    padding: "6px 8px",
-                    background: item.color,
-                    color: "white",
-                    border: "none",
-                    borderRadius: "4px",
-                    cursor: isRelationship ? "pointer" : "grab",
-                    fontSize: "11px",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                    userSelect: "none",
-                    transition: "transform 0.2s, box-shadow 0.2s",
-                    boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
-                    fontWeight: "500",
-                    minHeight: "28px",
-                  }}
-                  onMouseDown={(e) => {
-                    (e.currentTarget as HTMLElement).style.transform =
-                      "scale(0.95)";
-                  }}
-                  onMouseUp={(e) => {
-                    (e.currentTarget as HTMLElement).style.transform =
-                      "scale(1)";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.transform =
-                      "scale(1)";
-                  }}
-                  title={
-                    isRelationship
-                      ? `Haz click para crear ${item.label.toLowerCase()}`
-                      : `Arrastrar para agregar ${item.label.toLowerCase()}`
-                  }
-                >
-                  {item.label}
-                </div>
-              );
-            })}
+  const getItemIcon = (key: string) => {
+    const iconMap: Record<string, string> = {
+      class: "📦",
+      interface: "🔌",
+      enumeration: "📊",
+      package: "📁",
+      association: "🔗",
+      aggregation: "📎",
+      composition: "🔧",
+      generalization: "⬆️",
+      dependency: "⚡",
+      realization: "🎯",
+    };
+    return iconMap[key] || "📄";
+  };
+
+  return (
+    <div className="toolbar-container">
+      <div className="toolbar-header">
+        <h3 className="toolbar-title">Herramientas UML</h3>
+      </div>
+
+      <div className="toolbar-content">
+        {toolbarGroups.map((group) => (
+          <div key={group.title} className="toolbar-section">
+            <h4 className="toolbar-section-title">{group.title}</h4>
+            <div className="toolbar-grid">
+              {group.items.map((item) => {
+                const isRelationship = relationshipTypes.includes(item.key);
+                return (
+                  <div
+                    key={item.key}
+                    className={`toolbar-item ${
+                      isRelationship ? "toolbar-relationship-item" : ""
+                    }`}
+                    draggable={!isRelationship}
+                    onDragStart={
+                      !isRelationship
+                        ? (e) =>
+                            onDragStart(
+                              e,
+                              item.key as keyof typeof classTemplates
+                            )
+                        : undefined
+                    }
+                    onClick={
+                      onClick
+                        ? () => onClick(item.key as keyof typeof classTemplates)
+                        : undefined
+                    }
+                    title={
+                      isRelationship
+                        ? `Haz click para crear ${item.label.toLowerCase()}`
+                        : `Arrastrar para agregar ${item.label.toLowerCase()}`
+                    }
+                  >
+                    <div className="toolbar-item-icon">
+                      {getItemIcon(item.key)}
+                    </div>
+                    <div className="toolbar-item-label">{item.label}</div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
-          {groupIndex < toolbarGroups.length - 1 && (
-            <div
-              style={{
-                height: "1px",
-                background: "#dee2e6",
-                margin: "8px 0",
-                opacity: 0.5,
-              }}
-            />
-          )}
+        ))}
+
+        <div className="toolbar-actions-section">
+          <h4 className="toolbar-section-title">Acciones</h4>
+          <div className="toolbar-actions-grid">
+            <button
+              className="toolbar-action-button"
+              onClick={onUndo}
+              title="Deshacer última acción"
+            >
+              <div className="toolbar-item-icon">↶</div>
+              <div className="toolbar-item-label">Deshacer</div>
+            </button>
+            <button
+              className="toolbar-action-button"
+              onClick={onRedo}
+              title="Rehacer última acción"
+            >
+              <div className="toolbar-item-icon">↷</div>
+              <div className="toolbar-item-label">Rehacer</div>
+            </button>
+            <button
+              className="toolbar-action-button"
+              onClick={onPrint}
+              title="Imprimir diagrama"
+            >
+              <div className="toolbar-item-icon">🖨️</div>
+              <div className="toolbar-item-label">Imprimir</div>
+            </button>
+            <button
+              className="toolbar-action-button"
+              onClick={onExport}
+              title="Exportar diagrama"
+            >
+              <div className="toolbar-item-icon">📤</div>
+              <div className="toolbar-item-label">Exportar</div>
+            </button>
+            <button
+              className="toolbar-action-button"
+              onClick={onGenerateBackend}
+              title="Generar backend Spring Boot"
+            >
+              <div className="toolbar-item-icon">⚙️</div>
+              <div className="toolbar-item-label">Backend</div>
+            </button>
+          </div>
         </div>
-      ))}
+
+        <div className="toolbar-ai-section">
+          <button className="ai-bot-button" onClick={onAIBotClick}>
+            Asistente IA
+          </button>
+        </div>
+      </div>
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import "./Dashboard.css";
+import "./css/Dashboard.css";
 
 interface Diagram {
   id: string;
@@ -9,34 +9,23 @@ interface Diagram {
   createdAt: string;
   updatedAt: string;
   collaborators: number;
+  userRole: "creator" | "collaborator";
 }
 
-interface Invitation {
-  id: string;
+interface BackendDiagram {
   diagramId: string;
+  name: string;
+  description?: string;
   creatorId: string;
-  inviteeEmail: string;
-  inviteeId?: string;
-  status: "pending" | "accepted" | "rejected" | "expired";
-  message?: string;
   createdAt: string;
   updatedAt: string;
-  expiresAt: string;
-  acceptedAt?: string;
-  rejectedAt?: string;
-  diagram?: {
-    name: string;
-  };
-  creator?: {
-    name: string;
-    email: string;
-  };
+  collaborators?: string[];
 }
 
 const Dashboard: React.FC = () => {
   const [diagrams, setDiagrams] = useState<Diagram[]>([]);
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [pendingInvitationsCount, setPendingInvitationsCount] = useState(0);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -58,48 +47,51 @@ const Dashboard: React.FC = () => {
 
       const user = JSON.parse(userStr);
 
-      // Cargar diagramas (aún mock por ahora)
-      const mockDiagrams: Diagram[] = [
-        {
-          id: "1",
-          name: "Diagrama de Clases - Sistema de Gestión",
-          description:
-            "Diagrama UML de clases para el sistema de gestión universitaria",
-          createdAt: "2024-01-15",
-          updatedAt: "2024-01-20",
-          collaborators: 1,
-        },
-        {
-          id: "2",
-          name: "Diagrama de Secuencia - Login",
-          description: "Flujo de autenticación de usuarios",
-          createdAt: "2024-01-18",
-          updatedAt: "2024-01-22",
-          collaborators: 2,
-        },
-        {
-          id: "3",
-          name: "Diagrama de Base de Datos",
-          description: "Esquema de base de datos del sistema",
-          createdAt: "2024-01-20",
-          updatedAt: "2024-01-25",
-          collaborators: 1,
-        },
-      ];
-
-      // Cargar invitaciones reales desde el backend
-      const response = await fetch(`/api/invitations/user/${user.id}`);
-      if (response.ok) {
-        const invitationsData = await response.json();
-        setInvitations(invitationsData);
+      // Cargar diagramas reales desde el backend
+      const diagramsResponse = await fetch(`/api/diagrams/user/${user.id}`);
+      if (diagramsResponse.ok) {
+        const diagramsData = await diagramsResponse.json();
+        // Transformar los datos del backend al formato esperado por el frontend
+        const transformedDiagrams: Diagram[] = diagramsData.map(
+          (diagram: BackendDiagram) => ({
+            id: diagram.diagramId,
+            name: diagram.name,
+            description: diagram.description || "Sin descripción",
+            createdAt: new Date(diagram.createdAt).toLocaleDateString(),
+            updatedAt: new Date(diagram.updatedAt).toLocaleDateString(),
+            collaborators: diagram.collaborators?.length || 0,
+            userRole:
+              diagram.creatorId === user.id ? "creator" : "collaborator",
+          })
+        );
+        setDiagrams(transformedDiagrams);
       } else {
-        setInvitations([]);
+        setDiagrams([]);
       }
 
-      setDiagrams(mockDiagrams);
+      // Cargar conteo de invitaciones pendientes para el indicador
+      const invitationsResponse = await fetch("/api/invitations", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (invitationsResponse.ok) {
+        const invitationsData = await invitationsResponse.json();
+        // Contar solo las invitaciones pendientes para el usuario actual
+        const pendingCount = invitationsData.filter(
+          (invitation: { inviteeEmail: string; status: string }) =>
+            invitation.inviteeEmail === user.email &&
+            invitation.status === "pending"
+        ).length;
+        setPendingInvitationsCount(pendingCount);
+      } else {
+        setPendingInvitationsCount(0);
+      }
     } catch (error) {
       console.error("Error loading dashboard data:", error);
-      setInvitations([]);
+      setPendingInvitationsCount(0);
     } finally {
       setIsLoading(false);
     }
@@ -151,67 +143,81 @@ const Dashboard: React.FC = () => {
         return;
       }
 
-      // Si el nombre es único, navegar al editor
-      navigate(`/diagrams?name=${encodeURIComponent(diagramName)}`);
-    } catch (error) {
-      console.error("Error validating diagram name:", error);
-      alert("Error al validar el nombre del diagrama");
-    }
-  };
+      // Generar ID único para el diagrama
+      const diagramId = `diagram-${Date.now()}-${user.id}`;
 
-  const handleAcceptInvitation = async (invitationId: string) => {
-    try {
-      const userStr = localStorage.getItem("user");
-      if (!userStr) return;
-
-      const user = JSON.parse(userStr);
-
-      const response = await fetch(`/api/invitations/${invitationId}/accept`, {
+      // Crear diagrama vacío en la base de datos
+      const createResponse = await fetch("/api/diagrams", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({
+          diagramId,
+          name: diagramName,
+          description: `Diagrama UML creado por ${user.name || user.email}`,
+          creatorId: user.id,
+          collaborators: [],
+          state: {
+            elements: {},
+            relationships: {},
+            version: 1,
+            lastModified: new Date().toISOString(),
+          },
+          isPublic: false,
+          tags: [],
+        }),
       });
 
-      if (response.ok) {
-        // Recargar invitaciones
-        await loadDashboardData();
+      if (createResponse.ok) {
+        const savedDiagram = await createResponse.json();
+        console.log("Diagrama creado exitosamente:", savedDiagram);
+
+        // Navegar al editor con el diagramId
+        navigate(`/diagrams/${diagramId}`);
       } else {
-        console.error("Error accepting invitation");
+        const errorText = await createResponse.text();
+        console.error(
+          "Error creando diagrama:",
+          createResponse.status,
+          errorText
+        );
+        alert("Error al crear el diagrama");
       }
     } catch (error) {
-      console.error("Error accepting invitation:", error);
+      console.error("Error creando diagrama:", error);
+      alert("Error al crear el diagrama");
     }
   };
 
-  const handleDeclineInvitation = async (invitationId: string) => {
-    try {
-      const response = await fetch(`/api/invitations/${invitationId}/reject`, {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        // Recargar invitaciones
-        await loadDashboardData();
-      } else {
-        console.error("Error declining invitation");
-      }
-    } catch (error) {
-      console.error("Error declining invitation:", error);
-    }
-  };
-
-  const handleDeleteDiagram = (diagramId: string) => {
+  const handleDeleteDiagram = async (diagramId: string) => {
     // Confirmar eliminación
     const confirmDelete = window.confirm(
       "¿Estás seguro de que quieres eliminar este diagrama? Esta acción no se puede deshacer."
     );
 
     if (confirmDelete) {
-      // TODO: Implementar eliminación real del diagrama
-      setDiagrams((prev) => prev.filter((diagram) => diagram.id !== diagramId));
-      console.log(`Diagrama ${diagramId} eliminado`);
+      try {
+        const response = await fetch(`/api/diagrams/${diagramId}`, {
+          method: "DELETE",
+        });
+
+        if (response.ok) {
+          // Eliminar del estado local después de eliminar exitosamente del backend
+          setDiagrams((prev) =>
+            prev.filter((diagram) => diagram.id !== diagramId)
+          );
+          console.log(`Diagrama ${diagramId} eliminado exitosamente`);
+        } else {
+          console.error("Error al eliminar el diagrama:", response.statusText);
+          alert(
+            "Error al eliminar el diagrama. Por favor, inténtalo de nuevo."
+          );
+        }
+      } catch (error) {
+        console.error("Error al eliminar el diagrama:", error);
+        alert("Error al eliminar el diagrama. Por favor, inténtalo de nuevo.");
+      }
     }
   };
 
@@ -284,6 +290,14 @@ const Dashboard: React.FC = () => {
         <div className="header-content">
           <h1>Dashboard</h1>
           <div className="header-actions">
+            <Link to="/invitations" className="invitations-link">
+              Invitaciones
+              {pendingInvitationsCount > 0 && (
+                <span className="invitations-badge">
+                  {pendingInvitationsCount}
+                </span>
+              )}
+            </Link>
             <button onClick={handleCreateDiagram} className="create-button">
               Nuevo Diagrama
             </button>
@@ -310,9 +324,16 @@ const Dashboard: React.FC = () => {
                 <div key={diagram.id} className="diagram-card">
                   <div className="diagram-header">
                     <h3>{diagram.name}</h3>
-                    <span className="collaborators">
-                      👥 {diagram.collaborators}
-                    </span>
+                    <div className="diagram-badges">
+                      <span className={`user-role ${diagram.userRole}`}>
+                        {diagram.userRole === "creator"
+                          ? "👑 Creador"
+                          : "🤝 Colaborador"}
+                      </span>
+                      <span className="collaborators">
+                        👥 {diagram.collaborators}
+                      </span>
+                    </div>
                   </div>
                   <p className="diagram-description">{diagram.description}</p>
                   <div className="diagram-meta">
@@ -344,47 +365,6 @@ const Dashboard: React.FC = () => {
             </div>
           )}
         </section>
-
-        {invitations.length > 0 && (
-          <section className="invitations-section">
-            <h2>Invitaciones Pendientes</h2>
-            <div className="invitations-list">
-              {invitations.map((invitation) => (
-                <div key={invitation.id} className="invitation-card">
-                  <div className="invitation-info">
-                    <h4>{invitation.diagram?.name || "Diagrama"}</h4>
-                    <p>
-                      Invitado por:{" "}
-                      {invitation.creator?.name ||
-                        invitation.creator?.email ||
-                        "Usuario"}
-                    </p>
-                    <p>Estado: {invitation.status}</p>
-                    {invitation.message && <p>Mensaje: {invitation.message}</p>}
-                  </div>
-                  <div className="invitation-actions">
-                    {invitation.status === "pending" && (
-                      <>
-                        <button
-                          onClick={() => handleAcceptInvitation(invitation.id)}
-                          className="accept-button"
-                        >
-                          Aceptar
-                        </button>
-                        <button
-                          onClick={() => handleDeclineInvitation(invitation.id)}
-                          className="decline-button"
-                        >
-                          Rechazar
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
       </main>
     </div>
   );

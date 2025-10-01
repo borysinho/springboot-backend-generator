@@ -13,8 +13,10 @@ export interface ViewObserver {
 export class DiagramController {
   private model: DiagramModel;
   private views: Map<string, ViewObserver> = new Map();
+  private diagramId: string;
 
-  constructor() {
+  constructor(diagramId: string) {
+    this.diagramId = diagramId;
     this.model = new DiagramModel();
 
     // Suscribirse a cambios del modelo

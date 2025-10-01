@@ -1,11 +1,28 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import type { Notification } from "../components/NotificationSystem";
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const counterRef = useRef(0);
+  const timeoutsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+
+  // Limpiar timeouts cuando el componente se desmonte
+  useEffect(() => {
+    const currentTimeouts = timeoutsRef.current;
+    return () => {
+      currentTimeouts.forEach((timeout) => clearTimeout(timeout));
+      currentTimeouts.clear();
+    };
+  }, []);
 
   const removeNotification = useCallback((id: string) => {
+    // Limpiar cualquier timeout pendiente para esta notificación
+    const existingTimeout = timeoutsRef.current.get(id);
+    if (existingTimeout) {
+      clearTimeout(existingTimeout);
+      timeoutsRef.current.delete(id);
+    }
+
     setNotifications((prev) =>
       prev.map((n) => (n.id === id ? { ...n, autoClose: false } : n))
     );
@@ -37,9 +54,11 @@ export function useNotifications() {
       setNotifications((prev) => [notification, ...prev]);
 
       if (autoClose) {
-        setTimeout(() => {
+        const timeout = setTimeout(() => {
           removeNotification(id);
+          timeoutsRef.current.delete(id);
         }, duration);
+        timeoutsRef.current.set(id, timeout);
       }
 
       return id;
@@ -48,6 +67,9 @@ export function useNotifications() {
   );
 
   const clearAllNotifications = useCallback(() => {
+    // Limpiar todos los timeouts pendientes
+    timeoutsRef.current.forEach((timeout) => clearTimeout(timeout));
+    timeoutsRef.current.clear();
     setNotifications([]);
   }, []);
 

@@ -23,7 +23,7 @@ export const convertElementToJoint = (element: CustomElement) => {
   };
 };
 
-// Función para convertir UMLRelationship a link de JointJS con multiplicidad
+import { truncateText } from "./textUtils";
 export const convertRelationshipToLink = (relationship: UMLRelationship) => {
   const link = {
     id: relationship.id,
@@ -79,7 +79,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
       position: 0.5, // Centro de la línea
       attrs: {
         text: {
-          text: relationship.label,
+          text: truncateText(relationship.label, 10), // Truncar etiquetas largas
           fill: "#333",
           fontSize: 12,
           fontWeight: "bold",
@@ -101,7 +101,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
       position: 0, // Más alejado del extremo source
       attrs: {
         text: {
-          text: relationship.sourceMultiplicity,
+          text: truncateText(relationship.sourceMultiplicity, 8),
           fill: "#000",
           fontSize: 12,
           fontWeight: "bold",
@@ -123,7 +123,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
       position: 0.9, // Más alejado del extremo target
       attrs: {
         text: {
-          text: relationship.targetMultiplicity,
+          text: truncateText(relationship.targetMultiplicity, 8),
           fill: "#000",
           fontSize: 12,
           fontWeight: "bold",
@@ -145,7 +145,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
       position: 0.3, // Posición intermedia entre multiplicidad y etiqueta central
       attrs: {
         text: {
-          text: relationship.sourceRole,
+          text: truncateText(relationship.sourceRole, 10),
           fill: "#666",
           fontSize: 10,
           fontStyle: "italic",
@@ -159,7 +159,7 @@ export const convertRelationshipToLink = (relationship: UMLRelationship) => {
       position: 0.7, // Posición intermedia entre etiqueta central y multiplicidad
       attrs: {
         text: {
-          text: relationship.targetRole,
+          text: truncateText(relationship.targetRole, 10),
           fill: "#666",
           fontSize: 10,
           fontStyle: "italic",

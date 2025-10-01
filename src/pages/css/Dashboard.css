@@ -63,6 +63,56 @@
   color: #475569;
 }
 
+.invitations-link {
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  background: #f8fafc;
+  color: #475569;
+}
+
+.invitations-link:hover {
+  background: #e2e8f0;
+  color: #334155;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.invitations-badge {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 600;
+  border: 2px solid white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+.invitations-link {
+  position: relative;
+  padding: 10px 20px;
+  border-radius: 6px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.3s ease;
+  border: 1px solid #e2e8f0;
+  font-size: 14px;
+  background: #f8fafc;
+  color: #475569;
+}
+
 .dashboard-main {
   max-width: 1200px;
   margin: 0 auto;
@@ -76,7 +126,7 @@
 
 .diagrams-section h2,
 .invitations-section h2 {
-  color: #333;
+  color: #1e293b;
   font-size: 20px;
   font-weight: 600;
   margin-bottom: 20px;
@@ -95,6 +145,10 @@
   padding: 20px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  min-height: 200px;
+  height: auto;
 }
 
 .diagram-card:hover {
@@ -118,6 +172,32 @@
   margin-right: 12px;
 }
 
+.diagram-badges {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-end;
+}
+
+.user-role {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.user-role.creator {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.user-role.collaborator {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  color: white;
+}
+
 .collaborators {
   background: #f1f5f9;
   color: #64748b;
@@ -133,6 +213,7 @@
   font-size: 14px;
   line-height: 1.5;
   margin-bottom: 16px;
+  flex: 1;
 }
 
 .diagram-meta {
@@ -141,12 +222,14 @@
   font-size: 12px;
   color: #8892a0;
   margin-bottom: 16px;
+  margin-top: auto;
 }
 
 .diagram-actions {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
+  margin-top: 16px;
 }
 
 .edit-button {
@@ -267,6 +350,60 @@
 
 .decline-button:hover {
   background: #dc2626;
+}
+
+.tabs {
+  display: flex;
+  margin-bottom: 30px;
+  border-bottom: 1px solid #e1e5e9;
+}
+
+.tab-button {
+  padding: 12px 24px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  font-size: 16px;
+  font-weight: 500;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.tab-button:hover {
+  color: #1e293b;
+  background-color: #f1f5f9;
+}
+
+.tab-button.active {
+  color: #1e293b;
+  border-bottom-color: #667eea;
+  background-color: #f1f5f9;
+}
+
+.no-invitations {
+  text-align: center;
+  color: #475569;
+  font-style: italic;
+  padding: 40px;
+}
+
+.back-button {
+  padding: 10px 20px;
+  background: #f1f5f9;
+  color: #64748b;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 14px;
+}
+
+.back-button:hover {
+  background: #e2e8f0;
+  color: #475569;
 }
 
 .loading {

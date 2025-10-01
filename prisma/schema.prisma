@@ -40,6 +40,7 @@ model DiagramSnapshot {
   creatorId      String
   collaborators  String[] // Array de IDs de colaboradores
   state          Json // Estado completo del diagrama en JSON
+  physicalModel  Json? // Modelo físico generado (opcional)
   version        Int      @default(1)
   isPublic       Boolean  @default(false)
   tags           String[] // Tags para categorización

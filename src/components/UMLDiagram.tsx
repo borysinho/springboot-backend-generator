@@ -140,7 +140,25 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
   useEffect(() => {
     if (!graph) return;
 
-    console.log("Sincronizando elementos en UMLDiagram con el grafo");
+    console.log(
+      "🔄 Sincronizando elementos en UMLDiagram con el grafo - elementMap size:",
+      elementMap.size
+    );
+
+    // Primero, eliminar elementos que ya no existen en elementMap
+    const cellsToRemove: string[] = [];
+    graph.getElements().forEach((cell) => {
+      if (!elementMap.has(String(cell.id))) {
+        cellsToRemove.push(String(cell.id));
+      }
+    });
+    cellsToRemove.forEach((id) => {
+      const cell = graph.getCell(id);
+      if (cell) {
+        console.log("Eliminando elemento del grafo:", id);
+        cell.remove();
+      }
+    });
 
     elementMap.forEach((element: CustomElement) => {
       const existingCell = graph.getCell(element.id);
@@ -291,8 +309,30 @@ export const UMLDiagram: React.FC<UMLDiagramProps> = ({
           });
         }
 
+        // Actualizar posición si cambió
+        const currentPosition = existingCell.get("position");
+        if (
+          currentPosition.x !== element.x ||
+          currentPosition.y !== element.y
+        ) {
+          console.log(
+            `Actualizando posición de ${element.id} de (${currentPosition.x}, ${currentPosition.y}) a (${element.x}, ${element.y})`
+          );
+          existingCell.set("position", { x: element.x, y: element.y });
+        }
+
         // Siempre actualizar atributos visuales (colores, texto, etc.)
         updateElementVisualAttributes(existingCell, element);
+      }
+    });
+
+    // Eliminar elementos que ya no existen en elementMap
+    const existingCells = graph.getCells();
+    existingCells.forEach((cell) => {
+      // Solo procesar celdas que son elementos (no links)
+      if (cell.isElement() && !elementMap.has(String(cell.id))) {
+        console.log("Eliminando elemento del grafo que ya no existe:", cell.id);
+        cell.remove();
       }
     });
   }, [graph, elementMap]);

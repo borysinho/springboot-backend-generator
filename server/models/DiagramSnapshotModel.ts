@@ -1,6 +1,12 @@
 import { DiagramState } from "./DiagramModel.js";
 import { databaseService } from "../services/DatabaseService.js";
 
+export interface PhysicalModel {
+  tables: Record<string, unknown>;
+  relationships: unknown[];
+  appliedNormalizations?: string[];
+}
+
 export interface DiagramSnapshot {
   id: string;
   diagramId: string; // ID único del diagrama
@@ -9,6 +15,7 @@ export interface DiagramSnapshot {
   creatorId: string; // ID del usuario creador
   collaborators: string[]; // IDs de usuarios colaboradores
   state: DiagramState; // Estado completo del diagrama en JSON
+  physicalModel?: PhysicalModel; // Modelo físico generado (opcional)
   version: number; // Versión del snapshot
   isPublic: boolean; // Si el diagrama es público
   tags: string[]; // Tags para categorización
@@ -40,7 +47,8 @@ export class DiagramSnapshotModel {
       description: snapshotData.description,
       creatorId: snapshotData.creatorId,
       collaborators: snapshotData.collaborators || [],
-      state: snapshotData.state as any,
+      state: snapshotData.state,
+      physicalModel: snapshotData.physicalModel,
       isPublic: snapshotData.isPublic || false,
       tags: snapshotData.tags || [],
       thumbnail: snapshotData.thumbnail,
@@ -111,6 +119,14 @@ export class DiagramSnapshotModel {
       creatorId,
       excludeDiagramId
     );
+  }
+
+  // Actualizar un diagrama
+  async update(
+    diagramId: string,
+    updates: Partial<Omit<DiagramSnapshot, "id" | "diagramId" | "createdAt">>
+  ): Promise<DiagramSnapshot | null> {
+    return await databaseService.updateDiagramSnapshot(diagramId, updates);
   }
 
   // Buscar diagramas públicos
@@ -200,10 +216,11 @@ export class DiagramSnapshotModel {
 
   // Eliminar diagrama
   async delete(diagramId: string): Promise<boolean> {
-    const latestSnapshot = await this.getLatestByDiagramId(diagramId);
-    if (!latestSnapshot) return false;
-
-    return await databaseService.deleteDiagramSnapshot(latestSnapshot.id);
+    // Eliminar todos los snapshots del diagrama
+    const result = await databaseService.deleteDiagramSnapshotsByDiagramId(
+      diagramId
+    );
+    return result;
   }
 
   // Obtener estadísticas

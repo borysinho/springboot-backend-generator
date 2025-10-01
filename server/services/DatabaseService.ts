@@ -5,6 +5,19 @@ import { DiagramSnapshot } from "../models/DiagramSnapshotModel";
 import { Invitation, InvitationStatus } from "../models/InvitationModel";
 import { DiagramState } from "../models/DiagramModel";
 
+interface CreateDiagramSnapshotData {
+  diagramId: string;
+  name: string;
+  description?: string;
+  creatorId: string;
+  collaborators?: string[];
+  state: DiagramState;
+  physicalModel?: unknown;
+  isPublic?: boolean;
+  tags?: string[];
+  thumbnail?: string;
+}
+
 export class DatabaseService {
   private prisma: PrismaClient;
 
@@ -41,10 +54,10 @@ export class DatabaseService {
   async updateInvitationStatus(
     id: string,
     status: string,
-    userId: string
+    userId?: string
   ): Promise<any> {
     const updateData: any = { status, updatedAt: new Date() };
-    if (status === "accepted") {
+    if (status === "accepted" && userId) {
       updateData.acceptedAt = new Date();
       updateData.inviteeId = userId;
     } else if (status === "rejected") {
@@ -81,16 +94,62 @@ export class DatabaseService {
     return await this.prisma.invitation.findMany();
   }
 
-  async createDiagramSnapshot(data: any): Promise<any> {
-    return await this.prisma.diagramSnapshot.create({ data });
+  async updateDiagramSnapshot(diagramId: string, updates: any): Promise<any> {
+    return await this.prisma.diagramSnapshot.update({
+      where: { diagramId },
+      data: { ...updates, updatedAt: new Date() },
+    });
+  }
+
+  async deleteDiagramSnapshotsByDiagramId(diagramId: string): Promise<boolean> {
+    try {
+      await this.prisma.diagramSnapshot.deleteMany({
+        where: { diagramId },
+      });
+      return true;
+    } catch (error) {
+      console.error("Error deleting diagram snapshots:", error);
+      return false;
+    }
+  }
+
+  async createDiagramSnapshot(data: CreateDiagramSnapshotData): Promise<any> {
+    return await this.prisma.diagramSnapshot.create({
+      data: {
+        diagramId: data.diagramId,
+        name: data.name,
+        description: data.description || null,
+        creatorId: data.creatorId,
+        collaborators: data.collaborators || [],
+        state: data.state as any,
+        physicalModel: data.physicalModel as any,
+        version: 1,
+        isPublic: data.isPublic || false,
+        tags: data.tags || [],
+        thumbnail: data.thumbnail || null,
+        lastActivityAt: new Date(),
+      },
+    });
   }
 
   async findDiagramSnapshotById(id: string): Promise<any | null> {
     return await this.prisma.diagramSnapshot.findUnique({ where: { id } });
   }
 
-  async findDiagramSnapshotByDiagramId(diagramId: string): Promise<any[]> {
-    return await this.prisma.diagramSnapshot.findMany({ where: { diagramId } });
+  async findDiagramSnapshotByDiagramId(diagramId: string): Promise<any | null> {
+    return await this.prisma.diagramSnapshot.findFirst({
+      where: { diagramId },
+      orderBy: { version: "desc" },
+    });
+  }
+
+  async findDiagramSnapshotsByUser(userId: string): Promise<any[]> {
+    return await this.prisma.diagramSnapshot.findMany({
+      where: {
+        OR: [{ creatorId: userId }, { collaborators: { has: userId } }],
+      },
+      orderBy: { updatedAt: "desc" },
+    });
   }
 
   async deleteInvitation(id: string): Promise<boolean> {
@@ -125,6 +184,16 @@ export class DatabaseService {
     } catch {
       return false;
     }
+  }
+
+  async updateDiagramCollaborators(
+    diagramId: string,
+    collaborators: string[]
+  ): Promise<void> {
+    await this.prisma.diagramSnapshot.updateMany({
+      where: { diagramId },
+      data: { collaborators },
+    });
   }
 }
 

@@ -1,21 +1,22 @@
 .connection-status-bar {
-  position: fixed;
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.95);
-  border: 1px solid #ddd;
-  border-radius: 20px;
-  padding: 6px 12px;
-  font-size: 12px;
+  position: relative;
+  top: auto;
+  right: auto;
+  transform: none;
+  background: rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 15px;
+  padding: 4px 8px;
+  font-size: 11px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  z-index: 1000;
+  z-index: auto;
   display: flex;
   align-items: center;
-  gap: 8px;
-  min-width: 180px;
+  gap: 6px;
+  min-width: 200px;
   backdrop-filter: blur(10px);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .diagram-info-floating-btn {
@@ -104,7 +105,7 @@
 
 .status-text {
   font-weight: 500;
-  color: #333;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 11px;
 }
 
@@ -112,7 +113,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.8);
   font-size: 11px;
 }
 

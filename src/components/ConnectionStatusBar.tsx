@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import type { JsonPatchOperation } from "../hooks/useDiagramSync";
-import "./ConnectionStatusBar.css";
+import "./css/ConnectionStatusBar.css";
 
 interface User {
   id: string;
@@ -272,7 +272,25 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
 
     if (externalSocket) {
       socketInstance = externalSocket;
+      // Establecer estado inicial basado en la conexión actual
       setIsConnected(externalSocket.connected);
+
+      // Configurar event listeners para socket externo
+      socketInstance.on("connect", () => {
+        console.log(
+          "ConnectionStatusBar: Connected to server (external socket)"
+        );
+        setIsConnected(true);
+      });
+
+      socketInstance.on("disconnect", () => {
+        console.log(
+          "ConnectionStatusBar: Disconnected from server (external socket)"
+        );
+        setIsConnected(false);
+        setUsers([]);
+        setTotalUsers(0);
+      });
     } else {
       // Conectar al servidor Socket.IO
       socketInstance = io("http://localhost:3001", {
@@ -280,12 +298,16 @@ const ConnectionStatusBar: React.FC<ConnectionStatusBarProps> = ({
       });
 
       socketInstance.on("connect", () => {
-        console.log("Connected to server");
+        console.log(
+          "ConnectionStatusBar: Connected to server (internal socket)"
+        );
         setIsConnected(true);
       });
 
       socketInstance.on("disconnect", () => {
-        console.log("Disconnected from server");
+        console.log(
+          "ConnectionStatusBar: Disconnected from server (internal socket)"
+        );
         setIsConnected(false);
         setUsers([]);
         setTotalUsers(0);

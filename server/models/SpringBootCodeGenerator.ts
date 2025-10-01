@@ -163,8 +163,9 @@ export class SpringBootCodeGenerator {
     // Anotaciones de clase
     annotations.push("@Entity");
     annotations.push(`@Table(name = "${tableName}")`);
-    imports.add("javax.persistence.Entity");
-    imports.add("javax.persistence.Table");
+    imports.add("jakarta.persistence.Entity");
+    imports.add("jakarta.persistence.Table");
+    imports.add("java.time.LocalDateTime");
 
     // Procesar columnas
     for (const column of table.columns) {
@@ -173,22 +174,24 @@ export class SpringBootCodeGenerator {
 
       // Agregar imports necesarios
       field.annotations.forEach((ann) => {
-        if (ann.includes("@Id")) imports.add("javax.persistence.Id");
-        if (ann.includes("@GeneratedValue"))
-          imports.add("javax.persistence.GeneratedValue");
-        if (ann.includes("@Column")) imports.add("javax.persistence.Column");
+        if (ann.includes("@Id")) imports.add("jakarta.persistence.Id");
+        if (ann.includes("@GeneratedValue")) {
+          imports.add("jakarta.persistence.GeneratedValue");
+          imports.add("jakarta.persistence.GenerationType");
+        }
+        if (ann.includes("@Column")) imports.add("jakarta.persistence.Column");
         if (ann.includes("@OneToOne"))
-          imports.add("javax.persistence.OneToOne");
+          imports.add("jakarta.persistence.OneToOne");
         if (ann.includes("@OneToMany"))
-          imports.add("javax.persistence.OneToMany");
+          imports.add("jakarta.persistence.OneToMany");
         if (ann.includes("@ManyToOne"))
-          imports.add("javax.persistence.ManyToOne");
+          imports.add("jakarta.persistence.ManyToOne");
         if (ann.includes("@ManyToMany"))
-          imports.add("javax.persistence.ManyToMany");
+          imports.add("jakarta.persistence.ManyToMany");
         if (ann.includes("@JoinColumn"))
-          imports.add("javax.persistence.JoinColumn");
+          imports.add("jakarta.persistence.JoinColumn");
         if (ann.includes("@JoinTable"))
-          imports.add("javax.persistence.JoinTable");
+          imports.add("jakarta.persistence.JoinTable");
       });
     }
 
@@ -747,6 +750,11 @@ logging.level.org.springframework.web=DEBUG
     code += `            .collect(Collectors.toList());\n`;
     code += `    }\n\n`;
 
+    code += `    public static void updateEntityFromDTO(${mapper.dtoClass} dto, ${mapper.entityClass} entity) {\n`;
+    code += `        if (dto == null || entity == null) return;\n`;
+    code += `        // TODO: Update entity fields from DTO\n`;
+    code += `    }\n\n`;
+
     code += `}\n`;
     return code;
   }
@@ -819,7 +827,8 @@ logging.level.org.springframework.web=DEBUG
     code += `import org.springframework.beans.factory.annotation.Autowired;\n`;
     code += `import org.springframework.http.ResponseEntity;\n`;
     code += `import org.springframework.web.bind.annotation.*;\n`;
-    code += `import java.util.List;\n\n`;
+    code += `import java.util.List;\n`;
+    code += `import java.util.Optional;\n\n`;
 
     code += `@RestController\n`;
     code += `@RequestMapping("/api")\n`;
@@ -830,7 +839,8 @@ logging.level.org.springframework.web=DEBUG
 
     // Endpoints
     for (const endpoint of controller.endpoints) {
-      code += `    @${endpoint.method}Mapping("${endpoint.path}")\n`;
+      const mappingAnnotation = this.getMappingAnnotation(endpoint.method);
+      code += `    @${mappingAnnotation}("${endpoint.path}")\n`;
       code += `    public ${endpoint.returnType} ${
         endpoint.methodName
       }(${endpoint.parameters.join(", ")}) {\n`;
@@ -854,11 +864,13 @@ logging.level.org.springframework.web=DEBUG
           code += `        return ResponseEntity.ok(${controller.mapperClass}.toDTO(savedEntity));\n`;
           break;
         case "update":
-          code += `        if (!service.findById(id).isPresent()) {\n`;
+          code += `        Optional<${controller.entityClass}> existingEntity = service.findById(id);\n`;
+          code += `        if (!existingEntity.isPresent()) {\n`;
           code += `            return ResponseEntity.notFound().build();\n`;
           code += `        }\n`;
-          code += `        ${controller.entityClass} entity = ${controller.mapperClass}.toEntity(dto);\n`;
-          code += `        entity.setId(id); // Assuming entity has setId method\n`;
+          code += `        ${controller.entityClass} entity = existingEntity.get();\n`;
+          code += `        // Update entity fields from DTO (excluding ID)\n`;
+          code += `        ${controller.mapperClass}.updateEntityFromDTO(dto, entity);\n`;
           code += `        ${controller.entityClass} updatedEntity = service.save(entity);\n`;
           code += `        return ResponseEntity.ok(${controller.mapperClass}.toDTO(updatedEntity));\n`;
           break;
@@ -920,6 +932,21 @@ logging.level.org.springframework.web=DEBUG
 
   private toKebabCase(str: string): string {
     return str.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+  }
+
+  private getMappingAnnotation(method: string): string {
+    switch (method) {
+      case "GET":
+        return "GetMapping";
+      case "POST":
+        return "PostMapping";
+      case "PUT":
+        return "PutMapping";
+      case "DELETE":
+        return "DeleteMapping";
+      default:
+        return "RequestMapping";
+    }
   }
 }
 
